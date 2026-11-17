@@ -7,7 +7,7 @@ import { AstronomyStation } from './AstronomyStation';
 import { PhysWorkbenchRealistic } from './PhysWorkbenchRealistic';
 import { UnthinkableCosmicPhysics } from './UnthinkableCosmicPhysics';
 import { soundManager } from '../../audio/SoundManager';
-import { Sun, Activity, Zap, Telescope, Compass, Rocket, ArrowLeft, Atom, Sparkles } from 'lucide-react';
+import { Sun, Activity, Zap, Orbit, Compass, Rocket, ArrowLeft, Atom, Sparkles } from 'lucide-react';
 
 export const PhysicsLab: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'classical' | 'unthinkable'>('table');
@@ -28,9 +28,9 @@ export const PhysicsLab: React.FC = () => {
     },
     {
       id: 'astronomy' as const,
-      label: "Stargazing Observatory",
-      badge: '3D Moon & Star Constellations',
-      icon: <Telescope className="w-4 h-4 text-yellow-400" />,
+      label: '3D Solar System & Planets',
+      badge: 'Planetary Orbits • Sun & Worlds',
+      icon: <Orbit className="w-4 h-4 text-cyan-400" />,
     },
     {
       id: 'circuit' as const,

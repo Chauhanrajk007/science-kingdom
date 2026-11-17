@@ -46,15 +46,15 @@ export const SenkuGuide: React.FC<SenkuGuideProps> = ({
         title="Click anywhere to dismiss"
       />
 
-      <div className="fixed bottom-3 sm:bottom-6 inset-x-3 sm:inset-x-8 max-w-4xl mx-auto z-50 pointer-events-auto animate-in slide-in-from-bottom-6 duration-300">
-        <div className="relative flex items-end gap-3 sm:gap-5">
+      <div className="fixed bottom-2 sm:bottom-4 inset-x-2 sm:inset-x-8 max-w-5xl mx-auto z-50 pointer-events-auto animate-in slide-in-from-bottom-6 duration-300">
+        <div className="relative flex items-end gap-3 sm:gap-6">
           
-          {/* Mecha Senku Character Sprite - High-res, Prominent, Cleanly Alongside (NEVER covering text) */}
-          <div className="shrink-0 select-none pointer-events-none drop-shadow-[0_16px_40px_rgba(0,0,0,0.95)]">
+          {/* Mecha Senku Character Sprite - Life-sized Standing Guide Scale (NEVER covering text) */}
+          <div className="shrink-0 select-none pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.95)]">
             <img
               src="/assets/mecha_senku.png"
               alt="Mecha Senku"
-              className="w-36 sm:w-52 md:w-60 h-auto max-h-[300px] sm:max-h-[400px] object-contain object-bottom"
+              className="w-40 sm:w-60 md:w-72 h-auto max-h-[350px] sm:max-h-[470px] object-contain object-bottom"
             />
           </div>
 

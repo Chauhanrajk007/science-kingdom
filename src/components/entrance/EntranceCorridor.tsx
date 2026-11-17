@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import gsap from 'gsap';
 import { LabType } from '../../types/laboratory';
 import { soundManager } from '../../audio/SoundManager';
-import { Atom, FlaskConical, Dna, LogIn } from 'lucide-react';
+import { Atom, FlaskConical, Dna, LogIn, Sparkles } from 'lucide-react';
 
 interface EntranceCorridorProps {
   onEnterLab: (lab: LabType) => void;
@@ -12,8 +12,21 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
   const [hoveredDoor, setHoveredDoor] = useState<LabType | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedDoorName, setSelectedDoorName] = useState<string>('');
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  const senkuQuotes = [
+    "Ten billion percent welcome! I'm your Chief Scientist guide! Choose any laboratory blast door to step inside!",
+    "Rules of the Science Kingdom: 1. Stay curious. 2. Observe closely. 3. Form a hypothesis!",
+    "There's nothing science can't explain if you break it down step-by-step!",
+    "In this laboratory, formulas aren't magic—they're the fundamental laws of nature!",
+  ];
+
+  const handleSenkuClick = () => {
+    soundManager.playSuccess();
+    setQuoteIndex((prev) => (prev + 1) % senkuQuotes.length);
+  };
 
   // Subtle parallax on mouse movement
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -204,6 +217,67 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
             </div>
           );
         })}
+      </div>
+
+      {/* LIFE-SIZED MECHA SENKU STANDING IN FRONT OF THE BLAST DOORS AS CORRIDOR GUIDE */}
+      <div className="absolute bottom-0 left-2 sm:left-6 md:left-12 lg:left-20 z-30 pointer-events-none flex items-end">
+        {/* Full-Height Guide Character - Scaled like a real man standing before the door */}
+        <div 
+          onClick={handleSenkuClick}
+          className="relative group cursor-pointer pointer-events-auto transition-transform hover:scale-[1.02] active:scale-95"
+          title="Click Mecha Senku to hear science advice!"
+        >
+          {/* Ground Contact Shadow beneath his boots */}
+          <div className="absolute -bottom-2 inset-x-4 sm:inset-x-8 h-8 bg-black/90 rounded-full blur-xl transform scale-x-125 pointer-events-none" />
+
+          <img
+            src="/assets/mecha_senku.png"
+            alt="Mecha Senku - Virtual Laboratory Guide"
+            className="w-56 sm:w-72 md:w-88 lg:w-[420px] xl:w-[480px] h-auto max-h-[75vh] sm:max-h-[84vh] md:max-h-[90vh] object-contain object-bottom drop-shadow-[0_24px_60px_rgba(0,0,0,0.95)]"
+          />
+
+          {/* Interactive "Click Me!" indicator tag on hover */}
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-emerald-500 text-slate-950 font-mono font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-lg pointer-events-none whitespace-nowrap">
+            CLICK TO TALK!
+          </div>
+        </div>
+
+        {/* Dynamic Interactive Speech Bubble pointing from Mecha Senku */}
+        <div className="mb-24 sm:mb-32 md:mb-40 -ml-4 sm:-ml-2 z-40 max-w-xs sm:max-w-sm pointer-events-auto animate-in fade-in slide-in-from-left-4 duration-300">
+          <div 
+            onClick={handleSenkuClick}
+            className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/95 border-2 border-emerald-400/90 shadow-[0_20px_50px_rgba(0,0,0,0.95)] backdrop-blur-xl relative cursor-pointer hover:border-emerald-300 transition-colors"
+            title="Click to hear next tip!"
+          >
+            {/* Speech bubble tail pointing to Senku's head/shoulder */}
+            <div className="absolute -left-2.5 bottom-6 w-3.5 h-3.5 bg-slate-950 border-l-2 border-b-2 border-emerald-400 rotate-45" />
+
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-emerald-500/30">
+              <span className="font-mono font-black text-xs text-emerald-400 tracking-wider uppercase flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> MECHA SENKU • LAB GUIDE
+              </span>
+              <span className="text-[9px] font-mono text-emerald-300 bg-emerald-950/90 px-1.5 py-0.5 rounded border border-emerald-600/50">
+                E=mc²
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-100 font-sans leading-relaxed tracking-wide">
+              {hoveredDoor === 'physics'
+                ? "🚀 Physics Sector: Explore Newton's laws with dynamics carts, rainbow light prisms, and cosmic space shots to the Moon!"
+                : hoveredDoor === 'chemistry'
+                ? "🧪 Chemistry Sector: Dispense real drops with precision pipettes, test pH colors, and brew bubbling foaming reactions!"
+                : hoveredDoor === 'biology'
+                ? "🔬 Biology Sector: Slice and peel real Hibiscus flower petals, dissect specimens, and inspect cells under the microscope!"
+                : senkuQuotes[quoteIndex]
+              }
+            </p>
+
+            <div className="mt-2 pt-1 border-t border-slate-800 flex items-center justify-between text-[9px] font-mono text-slate-400">
+              <span>Status: Online & Ready</span>
+              <span className="text-emerald-400 font-bold">Tap to talk →</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bottom Sector Badges Navigation Indicator */}
