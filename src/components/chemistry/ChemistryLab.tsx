@@ -507,64 +507,72 @@ export const ChemistryLab: React.FC = () => {
                     </span>
                   </div>
                 ) : (
-                  /* --- VIEW B: FRONT WORKBENCH SIDE VIEW --- */
-                  <div className="relative flex flex-col items-center justify-end h-72 w-56 animate-in fade-in duration-300 pt-16">
+                  /* --- VIEW B: FRONT WORKBENCH SIDE VIEW WITH INTERACTIVE GLASS PIPETTE --- */
+                  <div className="relative flex flex-col items-center justify-end h-80 w-64 animate-in fade-in duration-300 pt-20">
                     
-                    {/* Realistic Glass Dropper Pipette Dispensing Animation above Beaker */}
+                    {/* High-Precision Interactive Glass Dropper Pipette */}
                     <div
-                      className={`absolute top-0 z-30 transition-all duration-500 flex flex-col items-center pointer-events-none ${
-                        isDroppingWithPipette ? 'opacity-100 translate-y-3' : 'opacity-0 -translate-y-8'
+                      className={`absolute top-1 z-30 transition-all duration-500 flex flex-col items-center ${
+                        isDroppingWithPipette ? 'opacity-100 translate-y-2' : 'opacity-85 translate-y-0'
                       }`}
                     >
-                      {/* Ergonomic Textured Rubber Squeeze Bulb */}
-                      <div className="relative flex flex-col items-center">
+                      {/* Interactive Rubber Squeeze Bulb (Clickable to dispense drops!) */}
+                      <button
+                        onClick={() => {
+                          soundManager.playLiquidDrip();
+                          setDropletCount((prev) => (prev % 3) + 1);
+                          setVolumeMl((prev) => Math.min(250, prev + 15));
+                        }}
+                        title="Click to squeeze a drop!"
+                        className="group relative flex flex-col items-center cursor-pointer transition-transform active:scale-95"
+                      >
                         <div
                           style={{
-                            transform: isDroppingWithPipette ? 'scaleY(0.76) scaleX(1.15)' : 'scale(1)',
-                            transition: 'transform 0.25s ease-in-out',
+                            transform: isDroppingWithPipette ? 'scaleY(0.74) scaleX(1.18)' : 'scale(1)',
+                            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                           }}
-                          className="w-8 h-11 rounded-t-full bg-gradient-to-b from-red-500 via-rose-700 to-red-900 border-2 border-red-400/90 shadow-[0_4px_16px_rgba(239,68,68,0.5)] relative flex items-center justify-center"
+                          className="w-9 h-12 rounded-t-full bg-gradient-to-b from-rose-500 via-red-600 to-rose-900 border-2 border-rose-400 shadow-[0_6px_20px_rgba(244,63,94,0.4)] relative flex items-center justify-center group-hover:brightness-110"
                         >
-                          <div className="w-1.5 h-6 bg-white/35 rounded-full blur-[0.5px] -ml-2" />
+                          <div className="w-1.5 h-7 bg-white/30 rounded-full blur-[0.5px] -ml-2.5" />
                         </div>
 
                         {/* Metallic Collar Ring */}
-                        <div className="w-6 h-2 bg-gradient-to-r from-slate-400 via-slate-100 to-slate-500 rounded-sm shadow-md" />
+                        <div className="w-7 h-2.5 bg-gradient-to-r from-slate-400 via-slate-100 to-slate-500 rounded-sm shadow-md" />
 
-                        {/* Borosilicate Glass Pipette Barrel */}
-                        <div className="w-3.5 h-20 border-2 border-white/80 bg-gradient-to-r from-white/30 via-transparent to-white/10 relative rounded-b flex flex-col justify-end overflow-hidden shadow-lg backdrop-blur-sm">
-                          {/* Graduated Tick Marks on Pipette */}
-                          <div className="absolute inset-0 flex flex-col justify-between py-1 px-0.5 text-[5px] font-mono text-slate-300 pointer-events-none">
+                        {/* Transparent Borosilicate Glass Pipette Barrel */}
+                        <div className="w-4 h-24 border-2 border-white/80 bg-gradient-to-r from-white/30 via-transparent to-white/15 relative rounded-b flex flex-col justify-end overflow-hidden shadow-xl backdrop-blur-sm">
+                          {/* Calibrated Meniscus Markings */}
+                          <div className="absolute inset-0 flex flex-col justify-between py-1.5 px-0.5 text-[5px] font-mono text-slate-300 pointer-events-none">
+                            <span>- 3mL</span>
                             <span>- 2mL</span>
                             <span>- 1mL</span>
-                            <span>- 0.5mL</span>
                           </div>
 
-                          {/* Suctioned Liquid Column inside Pipette */}
+                          {/* Suctioned Colored Liquid Column inside Pipette */}
                           <div
                             style={{
                               backgroundColor: droppingReagentColor,
-                              height: dropletCount === 1 ? '80%' : dropletCount === 2 ? '50%' : '15%',
-                              transition: 'height 0.3s ease-out',
+                              height: isDroppingWithPipette ? (dropletCount === 1 ? '70%' : dropletCount === 2 ? '40%' : '15%') : '65%',
+                              transition: 'height 0.35s ease-out',
                             }}
                             className="w-full opacity-95 shadow-inner"
                           />
                         </div>
 
-                        {/* Narrow Tapered Glass Jet Tip */}
-                        <div className="w-1.5 h-4 bg-white/70 border-x border-b border-white/80 rounded-b-full shadow-sm" />
-                      </div>
+                        {/* Fine Tapered Capillary Jet Nozzle */}
+                        <div className="w-1.5 h-5 bg-white/80 border-x border-b border-white rounded-b-full shadow-sm" />
+                      </button>
 
-                      {/* Animated Falling Teardrop Droplets with Gravity Acceleration */}
+                      {/* Smooth Gravity-Accelerated Liquid Teardrop Falling into Beaker */}
                       {dropletCount > 0 && (
-                        <div className="relative w-6 h-12 flex flex-col items-center justify-start overflow-visible">
+                        <div className="relative w-6 h-12 flex flex-col items-center justify-start overflow-visible pointer-events-none">
                           <div
                             key={dropletCount}
                             style={{
                               backgroundColor: droppingReagentColor,
-                              boxShadow: `0 0 12px ${droppingReagentColor}`,
+                              boxShadow: `0 0 14px ${droppingReagentColor}`,
                             }}
-                            className="w-3 h-4 rounded-b-full rounded-t-sm animate-in fade-in slide-in-from-top-2 duration-300 transform scale-110"
+                            className="w-3 h-4 rounded-b-full rounded-t-sm animate-in fade-in slide-in-from-top-3 duration-300 transform scale-110"
                           />
                         </div>
                       )}
@@ -594,7 +602,7 @@ export const ChemistryLab: React.FC = () => {
                         <div className="absolute top-0 inset-x-0 h-2 bg-white/30 rounded-full blur-[0.5px]" />
 
                         {/* Droplet Impact Splash Waves on surface */}
-                        {isDroppingWithPipette && (
+                        {(isDroppingWithPipette || dropletCount > 0) && (
                           <div className="absolute top-0 inset-x-0 flex items-center justify-center pointer-events-none">
                             <span className="w-12 h-3 rounded-full border-2 border-white/90 animate-ping opacity-80" />
                             <span className="w-6 h-1.5 rounded-full border border-white animate-pulse" />
