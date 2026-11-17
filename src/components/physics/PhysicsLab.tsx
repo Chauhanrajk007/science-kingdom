@@ -16,32 +16,32 @@ export const PhysicsLab: React.FC = () => {
   const classicalStations = [
     {
       id: 'mechanics' as const,
-      label: "Newton's Laws of Motion",
-      badge: 'F = m·a • Incline • Pulley',
+      label: "Newton's Push & Motion",
+      badge: 'Forces • Ramps • Pulleys',
       icon: <Compass className="w-4 h-4 text-cyan-400" />,
     },
     {
       id: 'optics' as const,
-      label: 'Light & Optics Bench',
-      badge: 'Lenses • Mirrors • Ray Tracing',
+      label: 'Magic of Light & Lenses',
+      badge: 'Bend Light • Rainbow Prism',
       icon: <Sun className="w-4 h-4 text-amber-400" />,
     },
     {
       id: 'astronomy' as const,
-      label: "Senku's Observatory",
-      badge: '3D Celestial Sphere & Moon',
+      label: "Stargazing Observatory",
+      badge: '3D Moon & Star Constellations',
       icon: <Telescope className="w-4 h-4 text-yellow-400" />,
     },
     {
       id: 'circuit' as const,
-      label: 'Copper Dynamo Circuit',
-      badge: 'Edison Bulb (V = I·R)',
+      label: 'Electricity & Lightbulb',
+      badge: 'Spin Dynamo • Light the Bulb',
       icon: <Zap className="w-4 h-4 text-emerald-400" />,
     },
     {
       id: 'pendulum' as const,
-      label: 'Harmonic Pendulum',
-      badge: 'T = 2π√(L/g)',
+      label: 'Swinging Pendulum',
+      badge: 'Rhythm of Gravity',
       icon: <Activity className="w-4 h-4 text-purple-400" />,
     },
   ];

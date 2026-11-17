@@ -75,7 +75,7 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
     {
       id: 'physics' as LabType,
       name: 'PHYSICS LAB',
-      subtext: 'Newton Mechanics • Optics Bench • Observatory',
+      subtext: 'Everyday Forces • Rainbow Light • Cosmic Moon Shot',
       themeBorder: 'border-cyan-400 bg-cyan-950/25 shadow-[0_0_50px_rgba(6,182,212,0.75)]',
       badgeBg: 'border-cyan-500/60 text-cyan-300 bg-slate-950/90',
       buttonBg: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950',
@@ -90,7 +90,7 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
     {
       id: 'chemistry' as LabType,
       name: 'CHEMISTRY LAB',
-      subtext: 'Free Chemical Simulator • Titration • Reaction Matrix',
+      subtext: 'Mix Colorful Liquids • Foaming Bubbles • Chemical Blasts',
       themeBorder: 'border-emerald-400 bg-emerald-950/25 shadow-[0_0_50px_rgba(16,185,129,0.75)]',
       badgeBg: 'border-emerald-500/60 text-emerald-300 bg-slate-950/90',
       buttonBg: 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950',
@@ -105,7 +105,7 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
     {
       id: 'biology' as LabType,
       name: 'BIOLOGY LAB',
-      subtext: 'Hibiscus Flower Dissection • Microscope • Plant Anatomy',
+      subtext: 'Peel Real Flower Petals • Compound Microscope • Living Cells',
       themeBorder: 'border-purple-400 bg-purple-950/25 shadow-[0_0_50px_rgba(168,85,247,0.75)]',
       badgeBg: 'border-purple-500/60 text-purple-300 bg-slate-950/90',
       buttonBg: 'bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:from-purple-400 hover:to-fuchsia-500 text-slate-950',
@@ -142,8 +142,8 @@ export const EntranceCorridor: React.FC<EntranceCorridorProps> = ({ onEnterLab }
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-widest text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] uppercase font-mono">
           THE SCIENCE KINGDOM
         </h1>
-        <p className="text-cyan-200/90 text-xs sm:text-sm drop-shadow font-mono tracking-wide mt-1">
-          Select any futuristic laboratory blast door to enter
+        <p className="text-cyan-200/90 text-xs sm:text-sm drop-shadow font-sans tracking-wide mt-1">
+          Welcome Young Scientist! Select any laboratory door to step inside and explore!
         </p>
       </div>
 

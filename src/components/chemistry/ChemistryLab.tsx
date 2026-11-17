@@ -237,10 +237,10 @@ export const ChemistryLab: React.FC = () => {
                 setViewMode('table');
               }}
               className="px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-emerald-400 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-mono font-bold shadow-xl backdrop-blur-md transition-all group"
-              title="Return to 3D Workbench Overview"
+              title="Return to Tabletop Overview"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
-              <span>3D Table Overview</span>
+              <span>Table Overview</span>
             </button>
 
             <div className="flex rounded-xl bg-slate-900/90 border border-slate-700/80 p-1 shadow-2xl backdrop-blur-md">
@@ -256,7 +256,7 @@ export const ChemistryLab: React.FC = () => {
                     : 'text-slate-300 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Beaker className="w-4 h-4" /> Free Reaction Simulator
+                <Beaker className="w-4 h-4" /> Creative Reaction Mixer
               </button>
               <button
                 onClick={() => {
@@ -270,14 +270,14 @@ export const ChemistryLab: React.FC = () => {
                     : 'text-slate-300 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Pipette className="w-4 h-4" /> Acid-Base Titration Lab
+                <Pipette className="w-4 h-4" /> Acid-Base Color Lab
               </button>
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/70 text-xs font-mono text-cyan-300 backdrop-blur-md">
-            <Bot className="w-4 h-4 text-cyan-400 animate-pulse" />
-            <span>Mecha Senku AI Reaction Engine • Real-Time Stoichiometry</span>
+          <div className="hidden sm:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/70 text-xs font-mono text-emerald-300 backdrop-blur-md">
+            <Bot className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Senku Science Mentor • Mix & Discover</span>
           </div>
         </div>
 
@@ -510,32 +510,61 @@ export const ChemistryLab: React.FC = () => {
                   /* --- VIEW B: FRONT WORKBENCH SIDE VIEW --- */
                   <div className="relative flex flex-col items-center justify-end h-72 w-56 animate-in fade-in duration-300 pt-16">
                     
-                    {/* Glass Dropper Pipette Dispensing Animation above Beaker */}
+                    {/* Realistic Glass Dropper Pipette Dispensing Animation above Beaker */}
                     <div
-                      className={`absolute top-0 z-30 transition-all duration-300 flex flex-col items-center pointer-events-none ${
-                        isDroppingWithPipette ? 'opacity-100 translate-y-2' : 'opacity-0 -translate-y-6'
+                      className={`absolute top-0 z-30 transition-all duration-500 flex flex-col items-center pointer-events-none ${
+                        isDroppingWithPipette ? 'opacity-100 translate-y-3' : 'opacity-0 -translate-y-8'
                       }`}
                     >
-                      {/* Rubber Squeeze Bulb */}
-                      <div className={`w-7 h-9 rounded-t-full bg-rose-700 border-2 border-rose-500 shadow-xl transition-transform duration-200 ${
-                        isDroppingWithPipette ? 'scale-y-75' : 'scale-y-100'
-                      }`} />
-                      {/* Glass Pipette Barrel with Reagent Column */}
-                      <div className="w-3 h-16 border border-white/70 bg-white/20 relative rounded-b flex flex-col justify-end overflow-hidden shadow-md">
+                      {/* Ergonomic Textured Rubber Squeeze Bulb */}
+                      <div className="relative flex flex-col items-center">
                         <div
-                          style={{ backgroundColor: droppingReagentColor }}
-                          className="w-full h-12 opacity-95 transition-colors"
-                        />
-                      </div>
-                      {/* Tapered Jet Tip */}
-                      <div className="w-1 h-3.5 bg-white/60 rounded-b-full" />
+                          style={{
+                            transform: isDroppingWithPipette ? 'scaleY(0.76) scaleX(1.15)' : 'scale(1)',
+                            transition: 'transform 0.25s ease-in-out',
+                          }}
+                          className="w-8 h-11 rounded-t-full bg-gradient-to-b from-red-500 via-rose-700 to-red-900 border-2 border-red-400/90 shadow-[0_4px_16px_rgba(239,68,68,0.5)] relative flex items-center justify-center"
+                        >
+                          <div className="w-1.5 h-6 bg-white/35 rounded-full blur-[0.5px] -ml-2" />
+                        </div>
 
-                      {/* Animated Falling Teardrop Droplets */}
-                      {dropletCount > 0 && (
-                        <div className="relative w-4 h-10 flex flex-col items-center justify-center">
+                        {/* Metallic Collar Ring */}
+                        <div className="w-6 h-2 bg-gradient-to-r from-slate-400 via-slate-100 to-slate-500 rounded-sm shadow-md" />
+
+                        {/* Borosilicate Glass Pipette Barrel */}
+                        <div className="w-3.5 h-20 border-2 border-white/80 bg-gradient-to-r from-white/30 via-transparent to-white/10 relative rounded-b flex flex-col justify-end overflow-hidden shadow-lg backdrop-blur-sm">
+                          {/* Graduated Tick Marks on Pipette */}
+                          <div className="absolute inset-0 flex flex-col justify-between py-1 px-0.5 text-[5px] font-mono text-slate-300 pointer-events-none">
+                            <span>- 2mL</span>
+                            <span>- 1mL</span>
+                            <span>- 0.5mL</span>
+                          </div>
+
+                          {/* Suctioned Liquid Column inside Pipette */}
                           <div
-                            style={{ backgroundColor: droppingReagentColor }}
-                            className="w-2.5 h-3.5 rounded-full rounded-t-sm shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce mt-1"
+                            style={{
+                              backgroundColor: droppingReagentColor,
+                              height: dropletCount === 1 ? '80%' : dropletCount === 2 ? '50%' : '15%',
+                              transition: 'height 0.3s ease-out',
+                            }}
+                            className="w-full opacity-95 shadow-inner"
+                          />
+                        </div>
+
+                        {/* Narrow Tapered Glass Jet Tip */}
+                        <div className="w-1.5 h-4 bg-white/70 border-x border-b border-white/80 rounded-b-full shadow-sm" />
+                      </div>
+
+                      {/* Animated Falling Teardrop Droplets with Gravity Acceleration */}
+                      {dropletCount > 0 && (
+                        <div className="relative w-6 h-12 flex flex-col items-center justify-start overflow-visible">
+                          <div
+                            key={dropletCount}
+                            style={{
+                              backgroundColor: droppingReagentColor,
+                              boxShadow: `0 0 12px ${droppingReagentColor}`,
+                            }}
+                            className="w-3 h-4 rounded-b-full rounded-t-sm animate-in fade-in slide-in-from-top-2 duration-300 transform scale-110"
                           />
                         </div>
                       )}
@@ -566,8 +595,9 @@ export const ChemistryLab: React.FC = () => {
 
                         {/* Droplet Impact Splash Waves on surface */}
                         {isDroppingWithPipette && (
-                          <div className="absolute top-0 inset-x-0 flex justify-center pointer-events-none">
-                            <span className="w-8 h-2 rounded-full border border-white animate-ping" />
+                          <div className="absolute top-0 inset-x-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-12 h-3 rounded-full border-2 border-white/90 animate-ping opacity-80" />
+                            <span className="w-6 h-1.5 rounded-full border border-white animate-pulse" />
                           </div>
                         )}
 
@@ -635,16 +665,17 @@ export const ChemistryLab: React.FC = () => {
             <div className="lg:col-span-3 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-3.5 flex flex-col justify-between shadow-2xl">
               <div>
                 <div className="pb-2 mb-2 border-b border-slate-800 flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
-                    Reaction Telemetry
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    Discovery Notepad
                   </span>
                   {reactionResult?.isExplosive ? (
                     <span className="px-2 py-0.5 rounded text-[9px] font-mono font-black bg-red-600 text-white animate-bounce">
-                      DANGER
+                      💥 BLAST!
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-800 text-slate-300">
-                      {reactionResult?.reactionOccurs ? 'Reaction Detected' : 'Equilibrium'}
+                      {reactionResult?.reactionOccurs ? '✨ Reaction Occurred!' : 'Quiet Mix'}
                     </span>
                   )}
                 </div>
@@ -653,18 +684,18 @@ export const ChemistryLab: React.FC = () => {
                   <div className="space-y-2.5">
                     {/* Balanced Equation */}
                     <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <span className="text-[10px] font-mono text-slate-400 block mb-0.5 uppercase">
-                        Chemical Equation:
+                      <span className="text-[10px] font-mono text-slate-400 block mb-0.5 uppercase font-bold">
+                        Chemical Formula:
                       </span>
                       <p className="text-xs font-mono font-bold text-amber-300 leading-snug">
                         {reactionResult.equation}
                       </p>
                     </div>
 
-                    {/* Scientific Explanation */}
+                    {/* Scientific Explanation in Human Language */}
                     <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80">
-                      <span className="text-[10px] font-mono text-slate-400 block mb-0.5 uppercase">
-                        Empirical Explanation:
+                      <span className="text-[10px] font-mono text-slate-400 block mb-0.5 uppercase font-bold">
+                        What Just Happened:
                       </span>
                       <p className="text-xs font-sans text-slate-200 leading-relaxed">
                         {reactionResult.explanation}
@@ -672,18 +703,18 @@ export const ChemistryLab: React.FC = () => {
                     </div>
 
                     {/* Senku Reaction Quote */}
-                    <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-600/40">
+                    <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40">
                       <span className="text-[10px] font-mono text-emerald-400 block mb-0.5 uppercase font-bold flex items-center gap-1">
-                        <Bot className="w-3 h-3 text-emerald-400" /> Mecha Senku Commentary:
+                        <Bot className="w-3.5 h-3.5 text-emerald-400" /> Senku's Mentor Tip:
                       </span>
-                      <p className="text-xs font-serif italic text-emerald-200 leading-relaxed">
+                      <p className="text-xs font-sans text-emerald-200 leading-relaxed">
                         "{reactionResult.senkuCommentary}"
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 font-mono text-xs">
-                    Select chemicals from the cabinet to trigger reactions, color shifts, precipitation, or explosive gas formation!
+                  <div className="p-6 text-center text-slate-400 font-sans text-xs leading-relaxed">
+                    🧪 Click any chemical bottle in the cabinet on the left! Watch the glass pipette drop it into the beaker to discover bubbles, color shifts, or fizzing foam!
                   </div>
                 )}
               </div>
@@ -691,7 +722,7 @@ export const ChemistryLab: React.FC = () => {
               {/* Quick Preset Reactions for Students */}
               <div className="pt-2 border-t border-slate-800">
                 <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-1">
-                  Try Iconic Reactions:
+                  Exciting Recipes to Try:
                 </span>
                 <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
                   <button

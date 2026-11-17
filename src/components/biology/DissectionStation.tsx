@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { soundManager } from '../../audio/SoundManager';
 import confetti from 'canvas-confetti';
 import { 
@@ -11,223 +11,177 @@ import {
   ZoomOut, 
   Info, 
   Flower2, 
-  Play, 
-  Pause, 
-  Film, 
-  Sliders, 
-  Layers,
-  ChevronRight,
   Pin,
-  Search
+  Search,
+  ArrowRight,
+  Hand,
+  Heart,
+  HelpCircle
 } from 'lucide-react';
 
 export const DissectionStation: React.FC = () => {
-  // Mode: Interactive Hands-On Cutting vs Predefined Video Demonstration
-  const [activeTab, setActiveTab] = useState<'interactive_cut' | 'video_guide'>('interactive_cut');
-
-  // Dissection Stage: 0 = Epicalyx/Calyx & Corolla, 1 = Staminal Column & Sheath, 2 = Ovary Longitudinal Section
+  // Dissection Stage: 0 = Peel Petals & Calyx, 1 = Slit Staminal Sheath, 2 = Slice Open Ovary
   const [currentStage, setCurrentStage] = useState<number>(0);
   
-  // Tools: 'scalpel' (knife to cut), 'forceps' (tweezers to peel), 'loupe' (2.5x magnifier), 'pin' (probe)
-  const [activeTool, setActiveTool] = useState<'scalpel' | 'forceps' | 'loupe' | 'pin'>('scalpel');
-  
-  // Real-time Cutting State
-  const [isCutting, setIsCutting] = useState<boolean>(false);
-  const [cutProgress, setCutProgress] = useState<number>(0); // 0 to 100%
-  const [hasCutCompleted, setHasCutCompleted] = useState<boolean>(false);
-  const [isLayerPeeled, setIsLayerPeeled] = useState<boolean>(false);
+  // Real-time Cutting & Peeling State
+  const [isDraggingScalpel, setIsDraggingScalpel] = useState<boolean>(false);
+  const [cutProgress, setCutProgress] = useState<number>(0); // 0% to 100%
+  const [hasCompletedCut, setHasCompletedCut] = useState<boolean>(false);
   const [selectedOrgan, setSelectedOrgan] = useState<string>('petals');
+  const [scalpelY, setScalpelY] = useState<number>(20); // vertical position percentage
 
-  // Video Demonstration State
-  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
-  const [videoTimestamp, setVideoTimestamp] = useState<number>(0);
-  const [selectedVideoStep, setSelectedVideoStep] = useState<number>(0);
-
-  // Loupe Magnifier position
-  const [loupePos, setLoupePos] = useState<{ x: number; y: number } | null>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
 
   const stages = [
     {
       id: 0,
-      title: 'Stage 1: Calyx & Corolla Incision (Petal & Sepal Removal)',
-      taskPrompt: 'Use your surgical scalpel to make a longitudinal slit down the green calyx and corolla base.',
-      cutGuide: { x1: 50, y1: 25, x2: 50, y2: 78, label: 'Longitudinal Incision Line' },
-      stageImg: '/assets/flower_stage1.jpg',
-      revealedImg: '/assets/flower_stage2.jpg',
-      desc: 'Intact Hibiscus rosa-sinensis pinned onto the wax dissection dish. Slicing through the gamosepalous calyx allows forceps to peel away the 5 scarlet petals, exposing the internal reproductive column.',
+      name: 'Layer 1: Peeling Sepals & Petals',
+      friendlyPrompt: 'Take your scalpel and drag down the line to gently slice and peel open the flower petals!',
+      baseInnerImg: '/assets/flower_stage2.jpg', // Revealed inside: staminal column
+      outerLeftImg: '/assets/flower_stage1.jpg',
+      outerRightImg: '/assets/flower_stage1.jpg',
+      revealName: 'Golden-Dusted Staminal Column & Velvet Stigma',
       organs: ['epicalyx', 'calyx', 'petals', 'pedicel'],
+      nextActionText: 'Next Step: Slit Open the Staminal Tube →',
     },
     {
       id: 1,
-      title: 'Stage 2: Slitting the Monadelphous Staminal Tube',
-      taskPrompt: 'Carefully slit the hollow fused stamen sheath from base to apex to expose the inner style.',
-      cutGuide: { x1: 48, y1: 30, x2: 48, y2: 80, label: 'Staminal Sheath Slit Line' },
-      stageImg: '/assets/flower_stage2.jpg',
-      revealedImg: '/assets/flower_stage3.jpg',
-      desc: 'The staminal tube is formed by fused filaments of hundreds of stamens. Slitting it lengthwise with fine needle forceps reveals the delicate, white elongated style running down its core.',
+      name: 'Layer 2: Splitting the Staminal Column',
+      friendlyPrompt: 'Now gently slice down the yellow tube to peel it open and find the secret white style hidden inside!',
+      baseInnerImg: '/assets/flower_stage3.jpg', // Revealed inside: style and ovary
+      outerLeftImg: '/assets/flower_stage2.jpg',
+      outerRightImg: '/assets/flower_stage2.jpg',
+      revealName: 'The Long White Style & Ovary Chamber',
       organs: ['stigma', 'anthers', 'filaments', 'staminal_tube'],
+      nextActionText: 'Next Step: Slice Open the Ovary Chamber →',
     },
     {
       id: 2,
-      title: 'Stage 3: Longitudinal Section (L.S.) of Superior Ovary',
-      taskPrompt: 'Slice the swollen green ovary longitudinally with a razor blade to reveal internal locules and ovules.',
-      cutGuide: { x1: 50, y1: 32, x2: 50, y2: 72, label: 'Central Longitudinal Razor Cut' },
-      stageImg: '/assets/flower_stage3.jpg',
-      revealedImg: '/assets/flower_stage3.jpg',
-      desc: 'Superior syncarpous pentacarpellary ovary. The longitudinal slice reveals 5 distinct internal chambers (locules) bearing glistening white biseriate ovules in axile placentation.',
+      name: 'Layer 3: Slicing the Baby Seed Chamber (Ovary)',
+      friendlyPrompt: 'Make one clean cut right through the green ovary at the base to open the 5 rooms holding baby ovules!',
+      baseInnerImg: '/assets/flower_stage3.jpg',
+      outerLeftImg: '/assets/flower_stage3.jpg',
+      outerRightImg: '/assets/flower_stage3.jpg',
+      revealName: '5 Chambers with Glistening White Ovules (Baby Seeds)',
       organs: ['ovary_wall', 'locules_ovules', 'style_tube', 'receptacle'],
+      nextActionText: 'Complete Dissection! Celebrate Discovery 🎉',
     },
   ];
 
-  const organData: Record<string, { name: string; system: string; functionTitle: string; desc: string }> = {
+  const organData: Record<string, { name: string; funTitle: string; easyExplanation: string }> = {
     epicalyx: {
-      name: 'Epicalyx (Involucre)',
-      system: 'Accessory Floral Whorl',
-      functionTitle: 'Extra Bud Protection & Photosynthesis',
-      desc: 'A whorl of 5 to 7 green, slender, leaf-like bracteoles situated immediately beneath the calyx. Provides supplementary structural defense to delicate inner floral organs during the young bud phase.',
+      name: 'Green Leafy Shield (Epicalyx)',
+      funTitle: 'The Flower\'s Armor',
+      easyExplanation: 'A little ring of 5 to 7 green leafy tips just under the flower. They wrap tightly around the flower when it is a baby bud to protect it from hungry bugs and rain!',
     },
     calyx: {
-      name: 'Calyx (5 Sepals)',
-      system: 'Protective Floral Whorl',
-      functionTitle: 'Gamosepalous Protection & Support',
-      desc: 'The outermost true floral whorl composed of 5 green sepals fused at the base (gamosepalous) with valvate aestivation. Synthesizes carbohydrates via photosynthesis and anchors the corolla securely to the floral receptacle.',
+      name: 'Green Cup (Calyx / Sepals)',
+      funTitle: 'The Floral Cradle',
+      easyExplanation: 'Five green sepals fused into a sturdy cup. It holds all the petals together tightly at the base so wind cannot blow the flower away.',
     },
     petals: {
-      name: 'Corolla (5 Petals)',
-      system: 'Attraction & Pollination Whorl',
-      functionTitle: 'Visual Attraction & Protection',
-      desc: 'Consists of 5 large, free (polypetalous), vibrant scarlet petals showing twisted (contorted) aestivation. The rich anthocyanin pigmentation and nectar glands at the base attract avian and insect pollinators like butterflies and honeybees.',
+      name: 'Scarlet Petals (Corolla)',
+      funTitle: 'The Colorful Welcome Sign',
+      easyExplanation: 'Big, bright red petals that catch the eyes of butterflies, hummingbirds, and bees. Deep inside, sweet nectar is waiting for visiting pollinators!',
     },
     pedicel: {
-      name: 'Floral Pedicel',
-      system: 'Vascular Axis',
-      functionTitle: 'Nutrient Transport & Mechanical Support',
-      desc: 'The cylindrical green stalk that connects the flower to the plant stem. Houses continuous xylem and phloem vascular bundles transporting water, minerals, and sucrose to the metabolically active floral tissues.',
+      name: 'Flower Stalk (Pedicel)',
+      funTitle: 'The Plant\'s Drinking Straw',
+      easyExplanation: 'The sturdy green stem that connects the flower to the main plant. It pumps fresh water and nutrients up into every petal!',
     },
     stigma: {
-      name: '5-Lobed Velvety Stigma',
-      system: 'Gynoecium / Pistil Apex',
-      functionTitle: 'Pollen Reception & Germination',
-      desc: 'The female receptive surface, branching into 5 velvety crimson lobes corresponding to the 5 underlying carpels. Covered with microscopic glandular stigmatic papillae and sticky sugary exudate that hydrates compatible pollen grains to trigger pollen tube growth.',
+      name: '5 Velvet Stigma Tips',
+      funTitle: 'The Pollen Catcher',
+      easyExplanation: 'At the very top of the stalk are 5 soft, sticky crimson pads. When bees land with golden pollen on their legs, the sticky pads catch the pollen so new seeds can grow!',
     },
     anthers: {
-      name: 'Monothecous Anthers & Pollen',
-      system: 'Androecium (Male Gametophyte Producer)',
-      functionTitle: 'Microsporogenesis & Pollen Release',
-      desc: 'Each stamen bears a single-lobed (monothecous), reniform (kidney-shaped) golden-yellow anther. At maturity, it dehisces transversely to release thousands of spiny, spheroidal pollen grains specialized for sticking to insect legs.',
+      name: 'Golden Pollen Bags (Anthers)',
+      funTitle: 'The Yellow Dust Pouches',
+      easyExplanation: 'Hundreds of tiny yellow bags filled with fine golden dust called pollen. Whenever an insect brushes past, pollen rubs onto its fur like fairy dust!',
     },
     filaments: {
-      name: 'Stamen Filaments',
-      system: 'Androecium Support',
-      functionTitle: 'Anther Flexibility & Positioning',
-      desc: 'Short, slender, delicate stalks that branch outward radially from the fused staminal tube, holding each anther outward so passing pollinators readily brush against the pollen sacs.',
+      name: 'Tiny Stalks (Filaments)',
+      funTitle: 'Springy Stamen Arms',
+      easyExplanation: 'Delicate little arms holding each yellow pollen pouch outwards so passing bees easily bump into them.',
     },
     staminal_tube: {
-      name: 'Fused Staminal Sheath',
-      system: 'Androecium Column',
-      functionTitle: 'Style Enclosure & Protection',
-      desc: 'The elongated hollow cylinder formed by basal stamen fusion. It acts as a protective conduit shield through which the delicate female style travels upwards from the ovary to the stigma without mechanical damage.',
+      name: 'Fused Staminal Column',
+      funTitle: 'The Science Elevator',
+      easyExplanation: 'All hundreds of stamen stems fuse together into a hollow red tube! It lifts the pollen high into the air right where flying pollinators will touch it.',
     },
     ovary_wall: {
-      name: 'Superior Ovary Wall (Pericarp)',
-      system: 'Gynoecium Base',
-      functionTitle: 'Ovule Shielding & Fruit Development',
-      desc: 'The fleshy protective outer enclosure of the pentacarpellary, syncarpous ovary. After successful double fertilization, this wall thickens and ripens into a 5-valved capsule fruit.',
+      name: 'Ovary Wall',
+      funTitle: 'The Protective Fruit Shell',
+      easyExplanation: 'The green protective wall around the seed room. Once the flower is pollinated, this wall thickens and ripens into a seed pod!',
     },
     locules_ovules: {
-      name: '5 Locules with Axile Ovules',
-      system: 'Female Megasporangia',
-      functionTitle: 'Egg Cell Development & Seed Formation',
-      desc: 'Longitudinal and cross sections clearly reveal 5 internal chambers (locules). Each locule contains numerous biseriate white ovules attached directly to the central axis (axile placentation). Each ovule contains an embryo sac ready for fertilization.',
+      name: '5 Rooms with Baby Ovules',
+      funTitle: 'The Baby Seeds!',
+      easyExplanation: 'Inside the ovary are 5 cozy rooms. Each room holds tiny white beads called ovules. When fertilized by pollen, each ovule grows into a real seed!',
     },
     style_tube: {
-      name: 'Elongated Style',
-      system: 'Gynoecium Conduit',
-      functionTitle: 'Pollen Tube Pathway to Ovary',
-      desc: 'The long, slender, cylindrical central axis passing straight through the staminal tube. Germinating pollen tubes digest their way through transmitting tissue inside this style to reach the ovules in the ovary below.',
+      name: 'The Inner Style Tunnel',
+      funTitle: 'The Hidden Pathway',
+      easyExplanation: 'A delicate white tube running straight through the center. Pollen tubes sprout on top and grow all the way down this tunnel to reach the baby seeds below!',
     },
     receptacle: {
-      name: 'Thalamus / Receptacle',
-      system: 'Floral Axis',
-      functionTitle: 'Basal Attachment of All Whorls',
-      desc: 'The swollen apex of the pedicel upon which all 4 floral whorls (calyx, corolla, androecium, and gynoecium) are hypogynously seated in concentric rings.',
+      name: 'Base Cushion (Receptacle)',
+      funTitle: 'The Flower\'s Cushion',
+      easyExplanation: 'The strong round base where all the petals, stems, and seed chambers sit safely.',
     },
   };
 
-  const videoSteps = [
-    {
-      id: 0,
-      title: 'Step 1: Epicalyx & Calyx Dissection',
-      duration: '0:45',
-      summary: 'Using fine forceps, tease away the 5-7 slender epicalyx bracteoles. Then insert scalpel tip at the pedicel junction to slit the green tubular calyx.',
-      tip: 'Do not penetrate more than 1mm to avoid bruising the delicate ovary nestled inside.',
-    },
-    {
-      id: 1,
-      title: 'Step 2: Corolla (Petals) Removal',
-      duration: '1:15',
-      summary: 'Gently grasp each of the 5 twisted scarlet petals at their narrowed base where they fuse with the staminal column and peel them back sequentially.',
-      tip: 'Notice the twisted (contorted) petal overlap in the intact flower before removing.',
-    },
-    {
-      id: 2,
-      title: 'Step 3: Longitudinal Slit of Staminal Column',
-      duration: '2:10',
-      summary: 'Under magnification, insert the needle point into the base of the staminal column. Guide the needle or scalpel blade upwards to split the fused filament tube.',
-      tip: 'Peel the split sheath gently with watchmaker forceps to reveal the glistening white style.',
-    },
-    {
-      id: 3,
-      title: 'Step 4: Longitudinal Section (L.S.) of Ovary',
-      duration: '3:30',
-      summary: 'Place the isolated superior ovary onto a clean glass slide. Hold it firmly with forceps and use a fresh razor blade to make one clean vertical cut straight down the center.',
-      tip: 'Add a single drop of water to prevent the delicate ovules from dehydrating.',
-    },
-    {
-      id: 4,
-      title: 'Step 5: Locules & Axile Placentation Examination',
-      duration: '4:45',
-      summary: 'Inspect under 10x lens: observe the 5 distinct chambers (locules) and rows of pearly white ovules attached along the central column axis (axile placentation).',
-      tip: 'Count the 5 stigmas above and the 5 locules below to confirm pentacarpellary symmetry!',
-    },
-  ];
+  const currentStageData = stages[currentStage];
+  const activeOrganInfo = organData[selectedOrgan] || organData['petals'];
 
-  // Handle Drag-to-Cut Scalpel Interaction
-  const handleCutMouseDown = () => {
-    if (activeTool !== 'scalpel' || hasCutCompleted) return;
-    setIsCutting(true);
+  // Handle Dragging Scalpel to Cut and Peel
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (hasCompletedCut) return;
+    setIsDraggingScalpel(true);
+    updateCutPosition(e.clientY);
     soundManager.playDoorSlide();
   };
 
-  const handleCutMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isCutting || hasCutCompleted) return;
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingScalpel || hasCompletedCut) return;
+    updateCutPosition(e.clientY);
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingScalpel(false);
+  };
+
+  const updateCutPosition = (clientY: number) => {
+    if (!trayRef.current) return;
+    const rect = trayRef.current.getBoundingClientRect();
+    const relativeY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    const progress = Math.min(100, Math.max(0, relativeY * 115));
     
-    setCutProgress((prev) => {
-      const next = Math.min(100, prev + 2.5);
-      if (next >= 100) {
-        setIsCutting(false);
-        setHasCutCompleted(true);
-        soundManager.playChimeSuccess();
-        confetti({ particleCount: 60, spread: 70, origin: { x: 0.5, y: 0.5 } });
-      }
-      return next;
-    });
+    setScalpelY(relativeY * 100);
+    setCutProgress(progress);
+
+    // Play subtle cutting sound as progress advances
+    if (Math.floor(progress) % 25 === 0 && progress > 5) {
+      soundManager.playClick();
+    }
+
+    if (progress >= 95 && !hasCompletedCut) {
+      setHasCompletedCut(true);
+      setCutProgress(100);
+      setIsDraggingScalpel(false);
+      soundManager.playChimeSuccess();
+      confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
+    }
   };
 
-  const handleCutMouseUp = () => {
-    setIsCutting(false);
-  };
-
-  const handlePeelLayer = () => {
+  const handleNextStage = () => {
     soundManager.playGlassClink();
-    setIsLayerPeeled(true);
     if (currentStage < stages.length - 1) {
-      setTimeout(() => {
-        setCurrentStage((prev) => prev + 1);
-        setCutProgress(0);
-        setHasCutCompleted(false);
-        setIsLayerPeeled(false);
-      }, 750);
+      setCurrentStage((prev) => prev + 1);
+      setCutProgress(0);
+      setHasCompletedCut(false);
+    } else {
+      confetti({ particleCount: 120, spread: 100, origin: { y: 0.4 } });
     }
   };
 
@@ -235,58 +189,43 @@ export const DissectionStation: React.FC = () => {
     soundManager.playClick();
     setCurrentStage(0);
     setCutProgress(0);
-    setHasCutCompleted(false);
-    setIsLayerPeeled(false);
+    setHasCompletedCut(false);
     setSelectedOrgan('petals');
   };
 
-  const currentStageData = stages[currentStage];
-  const activeOrganInfo = organData[selectedOrgan] || organData['petals'];
+  // Calculate dynamic peeling transforms directly from cutProgress
+  // As cutProgress goes 0 -> 100%, the left flap curls left and right flap curls right!
+  const peelTranslateX = (cutProgress / 100) * 110; // pixels to separate
+  const peelRotation = (cutProgress / 100) * 22; // degrees to hinge open
+  const peelOpacity = 1 - (cutProgress / 100) * 0.15; // slightly fade edges
 
   return (
     <div className="flex-1 flex flex-col gap-3 min-h-0 select-none font-mono">
       
-      {/* Top Controls & Navigation Bar */}
-      <div className="p-3 rounded-2xl bg-slate-900/90 border border-purple-500/30 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+      {/* Top Friendly Guidance Bar */}
+      <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-purple-500/30 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
         
-        {/* Dissection Mode Switcher */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-            <Flower2 className="w-4 h-4 text-purple-400" />
-            Dissection Mode:
-          </span>
-          <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-700">
-            <button
-              onClick={() => {
-                soundManager.playClick();
-                setActiveTab('interactive_cut');
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                activeTab === 'interactive_cut'
-                  ? 'bg-purple-600 text-white font-black shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Scissors className="w-3.5 h-3.5" /> Hands-On Scalpel Cut
-            </button>
-            <button
-              onClick={() => {
-                soundManager.playClick();
-                setActiveTab('video_guide');
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                activeTab === 'video_guide'
-                  ? 'bg-purple-600 text-white font-black shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Film className="w-3.5 h-3.5" /> Video Demonstration Lab
-            </button>
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-500/50">
+            <Flower2 className="w-5 h-5 text-purple-400 animate-bounce" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                Hands-On Flower Dissection
+              </span>
+              <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-600/40 px-2 py-0.5 rounded-full font-bold">
+                Step {currentStage + 1} of 3
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 font-sans mt-0.5">
+              {currentStageData.friendlyPrompt}
+            </p>
           </div>
         </div>
 
-        {/* Stage Steps Indicator */}
-        <div className="flex items-center gap-1.5">
+        {/* Step Indicators & Reset */}
+        <div className="flex items-center gap-2">
           {stages.map((st, idx) => (
             <button
               key={st.id}
@@ -294,148 +233,203 @@ export const DissectionStation: React.FC = () => {
                 soundManager.playClick();
                 setCurrentStage(idx);
                 setCutProgress(0);
-                setHasCutCompleted(false);
-                setIsLayerPeeled(false);
+                setHasCompletedCut(false);
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                 currentStage === idx
-                  ? 'border-purple-400 bg-purple-950/80 text-purple-200 shadow'
-                  : 'border-slate-800 bg-slate-950/50 text-slate-500 hover:text-slate-300'
+                  ? 'border-purple-400 bg-purple-950 text-white shadow-lg shadow-purple-500/20'
+                  : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
               }`}
             >
-              Stage {idx + 1}
+              {idx === 0 ? '🌸 1. Petals' : idx === 1 ? '🌾 2. Stamen' : '🔬 3. Ovary'}
             </button>
           ))}
+
           <button
             onClick={handleResetDissection}
-            className="p-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white ml-1"
-            title="Reset Dissection"
+            className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Start Over"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-purple-400" />
+            <RotateCcw className="w-4 h-4 text-purple-400" />
           </button>
         </div>
 
       </div>
 
-      {/* =========================================================================
-          MODE A: HANDS-ON SCALPEL DISSECTION OPERATING TABLE
-          ========================================================================= */}
-      {activeTab === 'interactive_cut' && (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
+      {/* Main Interactive Stage Grid */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
+        
+        {/* Left Column (8 cols): Tactile Dissection Tray with REAL-TIME PEELING ANIMATION */}
+        <div className="lg:col-span-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden">
           
-          {/* Left Column (8 cols): Interactive Wax Tray Operating Stage */}
-          <div className="lg:col-span-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-            
-            {/* Header Stage Status */}
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
-              <span className="font-bold text-purple-300 uppercase tracking-wider">
-                {currentStageData.title}
+          {/* Header Status & Progress */}
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
+            <span className="font-bold text-purple-300">
+              {currentStageData.name}
+            </span>
+            <div className="flex items-center gap-2 font-bold">
+              <span className="text-slate-400">Cut & Peel:</span>
+              <span className={cutProgress >= 100 ? 'text-emerald-400' : 'text-purple-400'}>
+                {cutProgress.toFixed(0)}%
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Cut Progress:</span>
-                <span className="font-bold text-emerald-400">{cutProgress.toFixed(0)}%</span>
-              </div>
             </div>
+          </div>
 
-            {/* Task Prompt Guide Banner */}
-            <div className="mb-2 p-2.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Scissors className="w-4 h-4 text-purple-400 animate-pulse" />
-                <span>{currentStageData.taskPrompt}</span>
-              </div>
-              {hasCutCompleted && !isLayerPeeled && (
-                <button
-                  onClick={handlePeelLayer}
-                  className="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-slate-950 font-black text-xs uppercase tracking-wider animate-bounce shadow-lg"
-                >
-                  Peel Open Tissue Layer →
-                </button>
-              )}
-            </div>
+          {/* Interactive Wax Tray Viewport */}
+          <div
+            ref={trayRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className={`relative flex-1 rounded-xl bg-slate-950 border-2 border-purple-500/30 overflow-hidden flex items-center justify-center min-h-[340px] ${
+              hasCompletedCut ? 'cursor-default' : 'cursor-crosshair'
+            }`}
+          >
+            {/* Wax Tray Border & Insect Pins Texture */}
+            <div className="absolute inset-0 pointer-events-none border-8 border-slate-900/90 rounded-lg shadow-inner z-20" />
 
-            {/* Visual Operating Tray Viewport */}
-            <div
-              onMouseDown={handleCutMouseDown}
-              onMouseMove={handleCutMouseMove}
-              onMouseUp={handleCutMouseUp}
-              className={`relative flex-1 rounded-xl bg-slate-950 border border-purple-500/20 overflow-hidden flex items-center justify-center min-h-[320px] ${
-                activeTool === 'scalpel' ? 'cursor-crosshair' : 'cursor-default'
-              }`}
-            >
-              {/* Macro Specimen Image */}
+            {/* BASE LAYER: The Inner Anatomy Revealed As You Peel! */}
+            <div className="absolute inset-0 flex items-center justify-center p-4">
               <img
-                src={isLayerPeeled ? currentStageData.revealedImg : currentStageData.stageImg}
-                alt="Hibiscus Dissection Practical Stage"
-                className={`w-full h-full object-contain pointer-events-none transition-all duration-700 ${
-                  isLayerPeeled ? 'scale-105 filter brightness-110' : ''
-                }`}
+                src={currentStageData.baseInnerImg}
+                alt="Revealed Flower Anatomy"
+                className="w-full h-full object-contain filter brightness-105 transition-transform duration-300"
               />
 
-              {/* Incision Line Guide Overlay */}
-              {!hasCutCompleted && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div
-                    style={{
-                      left: `${currentStageData.cutGuide.x1}%`,
-                      top: `${currentStageData.cutGuide.y1}%`,
-                      height: `${currentStageData.cutGuide.y2 - currentStageData.cutGuide.y1}%`,
-                    }}
-                    className="absolute w-1 border-r-2 border-dashed border-rose-400/80 animate-pulse"
-                  >
-                    {/* Progress Indicator Cut */}
-                    <div
-                      style={{ height: `${cutProgress}%` }}
-                      className="w-full bg-rose-500 shadow-[0_0_12px_#f43f5e]"
-                    />
-                  </div>
-
-                  {/* Cut Instruction Floating Pill */}
-                  <div
-                    style={{
-                      left: `${currentStageData.cutGuide.x1 + 3}%`,
-                      top: `${(currentStageData.cutGuide.y1 + currentStageData.cutGuide.y2) / 2}%`,
-                    }}
-                    className="absolute px-2.5 py-1 rounded-lg bg-slate-950/90 border border-rose-500/60 text-[10px] text-rose-300 font-bold shadow-xl backdrop-blur-md"
-                  >
-                    Hold & Drag Scalpel Down
-                  </div>
+              {/* Glowing Callout Tag for the Revealed Anatomy */}
+              {cutProgress > 40 && (
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-950/90 border border-emerald-400 text-emerald-300 text-xs font-bold shadow-2xl backdrop-blur-md flex items-center gap-2 animate-bounce z-10">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span>Revealed: {currentStageData.revealName}!</span>
                 </div>
               )}
+            </div>
 
-              {/* Sliced Open Seam when Completed */}
-              {hasCutCompleted && !isLayerPeeled && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="px-4 py-2 rounded-xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-black shadow-2xl backdrop-blur-md animate-bounce">
-                    ✓ INCISION COMPLETE! Click "Peel Open Tissue Layer" above!
-                  </div>
+            {/* OVERLAY LAYER: The Outer Petal / Tissue Layer Sliced and Peeling in Real-Time! */}
+            <div className="absolute inset-0 flex items-center justify-center p-4 overflow-hidden pointer-events-none">
+              
+              {/* LEFT HALF OF THE FLOWER (Peels Open to the Left as you cut!) */}
+              <div
+                style={{
+                  clipPath: 'polygon(0% 0%, 50% 0%, 50% 100%, 0% 100%)',
+                  transform: `translateX(-${peelTranslateX}px) rotate(-${peelRotation}deg)`,
+                  transformOrigin: 'left bottom',
+                  opacity: peelOpacity,
+                  transition: isDraggingScalpel ? 'none' : 'transform 0.4s ease-out',
+                }}
+                className="absolute inset-0 flex items-center justify-center p-4 will-change-transform"
+              >
+                <img
+                  src={currentStageData.outerLeftImg}
+                  alt="Outer Flower Left Flap"
+                  className="w-full h-full object-contain filter brightness-95"
+                />
+              </div>
+
+              {/* RIGHT HALF OF THE FLOWER (Peels Open to the Right as you cut!) */}
+              <div
+                style={{
+                  clipPath: 'polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%)',
+                  transform: `translateX(${peelTranslateX}px) rotate(${peelRotation}deg)`,
+                  transformOrigin: 'right bottom',
+                  opacity: peelOpacity,
+                  transition: isDraggingScalpel ? 'none' : 'transform 0.4s ease-out',
+                }}
+                className="absolute inset-0 flex items-center justify-center p-4 will-change-transform"
+              >
+                <img
+                  src={currentStageData.outerRightImg}
+                  alt="Outer Flower Right Flap"
+                  className="w-full h-full object-contain filter brightness-95"
+                />
+              </div>
+
+            </div>
+
+            {/* CUTTING GUIDE: Dotted Incision Seam when not yet cut */}
+            {!hasCompletedCut && (
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-20">
+                {/* Dotted Vertical Incision Seam */}
+                <div className="h-4/6 w-0.5 border-r-2 border-dashed border-rose-400/90 relative">
+                  {/* Glowing Incision Trench as Scalpel moves */}
+                  <div
+                    style={{ height: `${cutProgress}%` }}
+                    className="w-1 bg-gradient-to-b from-rose-500 to-amber-400 shadow-[0_0_15px_#f43f5e] transition-all"
+                  />
                 </div>
-              )}
 
-              {/* Organ Identification Hotspots */}
-              <div className="absolute inset-0 pointer-events-none">
+                {/* Friendly Drag Callout Bubble */}
+                {cutProgress === 0 && (
+                  <div className="mt-3 px-4 py-2 rounded-2xl bg-purple-950/90 border border-purple-400 text-purple-200 text-xs font-bold shadow-2xl backdrop-blur-md flex items-center gap-2 animate-bounce">
+                    <Scissors className="w-4 h-4 text-purple-400" />
+                    <span>Click & Drag down with your mouse to cut and peel!</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Moving Scalpel Blade Icon following mouse drag */}
+            {isDraggingScalpel && (
+              <div
+                style={{
+                  top: `${scalpelY}%`,
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+                className="absolute pointer-events-none z-30 transition-transform"
+              >
+                <div className="p-2 rounded-full bg-rose-600/90 text-white shadow-[0_0_20px_#f43f5e] animate-pulse">
+                  <Scissors className="w-5 h-5 fill-current" />
+                </div>
+              </div>
+            )}
+
+            {/* DISSECTION STEEL PINS (Appear when cut is complete to pin flaps down!) */}
+            {hasCompletedCut && (
+              <div className="absolute inset-0 pointer-events-none z-20">
+                {/* Left Pin */}
+                <div className="absolute top-1/3 left-16 flex items-center gap-1 animate-in zoom-in duration-300">
+                  <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_#38bdf8]" />
+                  <span className="text-[10px] text-cyan-300 font-bold bg-slate-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                    Pinned
+                  </span>
+                </div>
+                {/* Right Pin */}
+                <div className="absolute top-1/3 right-16 flex items-center gap-1 animate-in zoom-in duration-300">
+                  <span className="text-[10px] text-cyan-300 font-bold bg-slate-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                    Pinned
+                  </span>
+                  <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_#38bdf8]" />
+                </div>
+              </div>
+            )}
+
+            {/* Clickable Organ Callouts on Revealed Anatomy */}
+            {cutProgress > 60 && (
+              <div className="absolute inset-0 pointer-events-none z-30">
                 {currentStageData.organs.map((orgKey, idx) => {
                   const organ = organData[orgKey];
                   if (!organ) return null;
-                  const offsets = [
+                  const positions = [
                     { x: 30, y: 35 },
                     { x: 50, y: 55 },
                     { x: 70, y: 40 },
-                    { x: 45, y: 75 },
+                    { x: 50, y: 80 },
                   ];
-                  const pos = offsets[idx % offsets.length];
+                  const pos = positions[idx % positions.length];
                   return (
                     <button
                       key={orgKey}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         soundManager.playClick();
                         setSelectedOrgan(orgKey);
                       }}
                       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                      className={`absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider shadow-xl backdrop-blur-md border transition-all ${
+                      className={`absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md border transition-all ${
                         selectedOrgan === orgKey
                           ? 'border-purple-400 bg-purple-600 text-white scale-110 shadow-[0_0_15px_rgba(168,85,247,0.8)]'
-                          : 'border-slate-700 bg-slate-950/80 text-slate-300 hover:border-purple-400'
+                          : 'border-slate-700 bg-slate-950/85 text-slate-300 hover:border-purple-400'
                       }`}
                     >
                       {organ.name}
@@ -443,208 +437,75 @@ export const DissectionStation: React.FC = () => {
                   );
                 })}
               </div>
-
-            </div>
-
-            {/* Dissection Tool Tray */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800 flex-wrap gap-2 text-xs">
-              <span className="text-slate-400 font-bold uppercase tracking-wider">
-                Instruments:
-              </span>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: 'scalpel', label: 'Dissecting Scalpel', icon: <Scissors className="w-3.5 h-3.5" /> },
-                  { id: 'forceps', label: 'Fine Watchmaker Forceps', icon: <Pin className="w-3.5 h-3.5" /> },
-                  { id: 'loupe', label: '2.5× Loupe Lens', icon: <Search className="w-3.5 h-3.5" /> },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      soundManager.playClick();
-                      setActiveTool(t.id as any);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      activeTool === t.id
-                        ? 'border-purple-400 bg-purple-950/80 text-purple-200 shadow-md ring-1 ring-purple-400'
-                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {t.icon}
-                    <span>{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
           </div>
 
-          {/* Right Column (4 cols): Anatomical Detail & Dissection Analysis */}
-          <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
-            
-            {/* Selected Organ Botanical Card */}
-            <div className="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-[10px] text-purple-400 uppercase font-bold tracking-widest">
-                  {activeOrganInfo.system}
-                </span>
-                <span className="text-[10px] text-emerald-400 font-bold">Taxon: Malvaceae</span>
-              </div>
-              
-              <h3 className="text-base font-black text-white tracking-wide">
+          {/* Bottom Bar: Action to proceed to next stage */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-800 flex-wrap gap-2 text-xs">
+            <span className="text-slate-400">
+              {hasCompletedCut 
+                ? 'Great job! The petals are completely peeled open.' 
+                : 'Click and drag down to peel the petals open!'}
+            </span>
+
+            {hasCompletedCut && (
+              <button
+                onClick={handleNextStage}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:from-purple-400 hover:to-fuchsia-500 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-purple-500/25 transition-all animate-bounce"
+              >
+                <span>{currentStageData.nextActionText}</span>
+              </button>
+            )}
+          </div>
+
+        </div>
+
+        {/* Right Column (4 cols): Human-Friendly Botanical Explanations */}
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
+          
+          {/* Organ Discovery Card */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">
+                Flower Anatomy Guide
+              </span>
+              <span className="text-[10px] text-emerald-400 font-bold">Hibiscus Flower</span>
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-white">
                 {activeOrganInfo.name}
               </h3>
-              
-              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">
-                  Diagnostic Function:
-                </span>
-                <p className="text-xs text-purple-200 font-sans leading-relaxed">
-                  {activeOrganInfo.functionTitle}
-                </p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">
-                  Morphological & Anatomical Description:
-                </span>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  {activeOrganInfo.desc}
-                </p>
-              </div>
+              <span className="text-xs text-purple-300 font-bold block mt-0.5">
+                "{activeOrganInfo.funTitle}"
+              </span>
             </div>
 
-            {/* Botanical Floral Formula Card for STEM Students */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/60 to-slate-900 border border-purple-500/30 text-xs shadow-xl space-y-2">
-              <span className="font-bold text-purple-400 uppercase tracking-wider block">
-                Hibiscus Floral Formula (NCERT):
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                How It Works in Nature:
               </span>
-              <div className="p-2 rounded-lg bg-slate-950 border border-purple-500/30 text-center font-bold text-purple-300 text-xs">
-                ⊕ ⚥ Epi₅₋₇ K₍₅₎ C₅ A₍∞₎ <u>G</u>₍₅₎
-              </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
-                Actinomorphic (radial symmetry), bisexual, 5-7 epicalyx bracts, 5 gamosepalous sepals, 5 free twisted petals, monadelphous infinite stamens, 5 fused superior carpels with axile placentation.
+              <p className="text-xs text-slate-200 font-sans leading-relaxed">
+                {activeOrganInfo.easyExplanation}
               </p>
             </div>
+          </div>
 
+          {/* Friendly Science Fun Fact */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/60 to-slate-900 border border-purple-500/30 text-xs shadow-xl space-y-2">
+            <div className="flex items-center gap-1.5 text-purple-400 font-bold">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>Senku's Fun Flower Secret</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+              Did you know? The red Hibiscus flower is both a boy and a girl at the same time! The yellow fluffy powder are the male stamens, and the 5 velvety red tips on top are the female stigmas!
+            </p>
           </div>
 
         </div>
-      )}
 
-      {/* =========================================================================
-          MODE B: PREDEFINED HIGH-DEFINITION VIDEO DEMONSTRATION LAB
-          ========================================================================= */}
-      {activeTab === 'video_guide' && (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
-          
-          {/* Left Column (8 cols): Video Player Interface */}
-          <div className="lg:col-span-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-            
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
-              <span className="font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
-                <Film className="w-4 h-4 text-purple-400" />
-                Predefined Laboratory Dissection Video Guide
-              </span>
-              <span className="text-slate-400">Step {selectedVideoStep + 1} of 5</span>
-            </div>
-
-            {/* Simulated High-Definition Video Canvas */}
-            <div className="relative flex-1 rounded-xl bg-slate-950 border border-purple-500/30 overflow-hidden flex items-center justify-center min-h-[340px]">
-              {/* Macro Dissection Demonstration Imagery */}
-              <img
-                src={
-                  selectedVideoStep === 0 
-                    ? '/assets/flower_stage1.jpg' 
-                    : selectedVideoStep <= 2 
-                    ? '/assets/flower_stage2.jpg' 
-                    : '/assets/flower_stage3.jpg'
-                }
-                alt="Demonstration Video Frame"
-                className="w-full h-full object-cover filter brightness-95"
-              />
-
-              {/* Video Overlay Tint & Play Watermark */}
-              <div className="absolute inset-0 bg-slate-950/30 flex items-center justify-center">
-                <button
-                  onClick={() => {
-                    soundManager.playClick();
-                    setIsVideoPlaying(!isVideoPlaying);
-                  }}
-                  className="w-16 h-16 rounded-full bg-purple-600/90 hover:bg-purple-500 text-white flex items-center justify-center shadow-2xl transition-all scale-100 hover:scale-110"
-                >
-                  {isVideoPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
-                </button>
-              </div>
-
-              {/* Bottom Video Progress Scrubber */}
-              <div className="absolute bottom-3 left-4 right-4 z-20 flex items-center justify-between gap-3 px-4 py-2 rounded-xl bg-slate-950/90 border border-slate-800 text-xs">
-                <span className="text-purple-400 font-bold">{videoSteps[selectedVideoStep].duration}</span>
-                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${((selectedVideoStep + 1) / 5) * 100}%` }}
-                    className="h-full bg-purple-500 transition-all duration-300"
-                  />
-                </div>
-                <span className="text-slate-400">5:00 Total</span>
-              </div>
-            </div>
-
-            {/* Video Step Selection Navigation */}
-            <div className="grid grid-cols-5 gap-1.5 pt-3 border-t border-slate-800 text-center">
-              {videoSteps.map((st, idx) => (
-                <button
-                  key={st.id}
-                  onClick={() => {
-                    soundManager.playClick();
-                    setSelectedVideoStep(idx);
-                  }}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all border ${
-                    selectedVideoStep === idx
-                      ? 'border-purple-400 bg-purple-950 text-purple-200 shadow'
-                      : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Step {idx + 1}
-                </button>
-              ))}
-            </div>
-
-          </div>
-
-          {/* Right Column (4 cols): Detailed Practical Step Protocol */}
-          <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
-            <div className="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-3">
-              <div className="border-b border-slate-800 pb-2">
-                <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest block">
-                  Demonstration Protocol:
-                </span>
-                <h3 className="text-base font-black text-white mt-0.5">
-                  {videoSteps[selectedVideoStep].title}
-                </h3>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
-                  Procedure:
-                </span>
-                <p className="text-xs text-slate-200 font-sans leading-relaxed">
-                  {videoSteps[selectedVideoStep].summary}
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30">
-                <span className="text-[10px] text-purple-300 font-bold uppercase block mb-1">
-                  Practical Laboratory Tip:
-                </span>
-                <p className="text-xs text-purple-200 font-sans leading-relaxed">
-                  {videoSteps[selectedVideoStep].tip}
-                </p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      )}
+      </div>
 
     </div>
   );
