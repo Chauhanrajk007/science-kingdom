@@ -43,8 +43,13 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
 
   // --- MODE 2: PLANETARY TRAMPOLINE STATE ---
   const [trampolinePlanet, setTrampolinePlanet] = useState<'earth' | 'moon' | 'mars' | 'jupiter' | 'asteroid'>('moon');
-  const [isJumping, setIsJumping] = useState<boolean>(false);
   const [jumpHeightM, setJumpHeightM] = useState<number>(0.5);
+
+  // Natural multi-phase trampoline state
+  const [trampolineState, setTrampolineState] = useState<'idle' | 'squat' | 'launch' | 'apex' | 'landing' | 'recoil'>('idle');
+  const [bedDeflection, setBedDeflection] = useState<number>(0);
+  const [jumpOffsetPx, setJumpOffsetPx] = useState<number>(0);
+  const [characterScale, setCharacterScale] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
 
   const planetsData = {
     earth: { name: 'Earth', gravity: 9.81, jumpM: 0.5, hangTimeSec: 0.6, desc: 'Normal Earth gravity. A healthy jump reaches about 0.5 meters (knee to waist high).' },
@@ -58,7 +63,7 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
   const [spaghettiDistance, setSpaghettiDistance] = useState<number>(100); // 100% = safe, 0% = event horizon
   const [droppedItem, setDroppedItem] = useState<'apple' | 'astronaut' | 'clock'>('apple');
 
-  // Simulation physics state ref for Moon throw
+  // Simulation physics state ref for Moon throw with trajectory impact tracking
   const sim = useRef({
     x: 110,
     y: 420,
@@ -67,6 +72,8 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
     t: 0,
     done: false,
     trail: [] as { x: number; y: number }[],
+    maxAltKm: 0,
+    impact: null as { x: number; y: number; distanceKm: number; shockwaveRing: number } | null,
   });
 
   const speedOfLightKmS = 300000;
@@ -88,6 +95,8 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
       t: 0,
       done: false,
       trail: [],
+      maxAltKm: 0,
+      impact: null,
     };
     setJourneyTrail([]);
   };
@@ -105,6 +114,8 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
     sim.current.vy = -Math.sin(rad) * visualSpeed;
     sim.current.t = 0;
     sim.current.done = false;
+    sim.current.maxAltKm = 0;
+    sim.current.impact = null;
   };
 
   // Preset launchers for kids
@@ -280,6 +291,7 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
 
         // Calculate real-world altitude km
         const altitudeKm = Math.max(0, (distE - earthR) * 35);
+        if (altitudeKm > s.maxAltKm) s.maxAltKm = Math.round(altitudeKm);
         setRealtimeAltitudeKm(Math.round(altitudeKm));
 
         // Update Friendly Milestone Tracker
@@ -293,6 +305,8 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
           setFlightMilestone('Past Space Station ISS (Orbit Realm) 🛰️');
         } else if (altitudeKm > 100) {
           setFlightMilestone('Passed Karman Line: In Space! 🚀');
+        } else if (s.vy > 0 && s.t > 15) {
+          setFlightMilestone(`⚠️ Peak (${s.maxAltKm} km) passed! Gravity pulling down to Earth!`);
         } else {
           setFlightMilestone('Ascending through Earth\'s Atmosphere 🌤️');
         }
@@ -324,12 +338,29 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
           confetti({ particleCount: 80, spread: 90, origin: { x: 0.85, y: 0.3 } });
           setFlightOutcome('🌕 TOUCHDOWN ON THE MOON! The ball broke through Earth\'s gravity and crashed at Tycho Crater!');
         }
-        // 2. Fall back to Earth
+        // 2. Fall back to Earth (Shows exactly where and how it landed!)
         else if (distE <= earthR && s.t > 8) {
           s.done = true;
           setIsFlying(false);
           soundManager.playDoorSlide();
-          setFlightOutcome('🌱 FELL BACK TO EARTH! At human speeds, gravity pulls the ball back down after a few hundred meters.');
+
+          // Calculate downrange distance along Earth's curvature
+          const launchRad = Math.atan2(420 - earthY, 110 - earthX);
+          const impactRad = Math.atan2(s.y - earthY, s.x - earthX);
+          const angleDiff = Math.abs(impactRad - launchRad);
+          const downrangeKm = Math.max(25, Math.round(angleDiff * 6371));
+
+          s.impact = {
+            x: s.x,
+            y: s.y,
+            distanceKm: downrangeKm,
+            shockwaveRing: 4,
+          };
+
+          setFlightMilestone(`💥 Splashdown: ${downrangeKm.toLocaleString()} km from Launchpad`);
+          setFlightOutcome(
+            `🌱 FELL BACK TO EARTH! At ${velocityKmS < 1 ? `${(velocityKmS * 1000).toFixed(0)} m/s` : `${velocityKmS} km/s`}, Earth\'s gravity curved the ball down after reaching peak altitude of ${s.maxAltKm.toLocaleString()} km. It splashed down in the ocean ${downrangeKm.toLocaleString()} km downrange!`
+          );
         }
         // 3. Stable Satellite Orbit
         else if (s.t > 350 && distE > earthR * 1.2 && distE < width * 0.75 && distM > moonR * 3) {
@@ -385,6 +416,40 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
 
       ctx.restore();
 
+      // Draw Animated Impact Landing Site Shockwave on Earth
+      if (sim.current.impact) {
+        const imp = sim.current.impact;
+        if (imp.shockwaveRing < 38) {
+          imp.shockwaveRing += 0.8;
+        }
+
+        // Outer Shockwave Wave
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(imp.x, imp.y, imp.shockwaveRing, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner Flash Wave
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(imp.x, imp.y, imp.shockwaveRing * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Impact Center Point
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(imp.x, imp.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Downrange Landing Label
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`💥 Landed: ${imp.distanceKm} km from launchpad`, imp.x, imp.y - 12);
+      }
+
       animFrameRef.current = requestAnimationFrame(render);
     };
 
@@ -395,15 +460,97 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
     };
   }, [unthinkableMode, isFlying, velocityKmS, launchAngleDeg, projectileType]);
 
-  // Handle Trampoline Jump Animation
+  // Handle Natural Multi-Phase Trampoline Jump Animation
   const triggerTrampolineJump = (planetKey: 'earth' | 'moon' | 'mars' | 'jupiter' | 'asteroid') => {
-    soundManager.playClick();
+    if (trampolineState !== 'idle') return;
     setTrampolinePlanet(planetKey);
-    setIsJumping(true);
+    const p = planetsData[planetKey];
+
+    // Phase 1: Squat & Bed Depression
+    setTrampolineState('squat');
+    setBedDeflection(18); // Bed sags down 18px
+    setCharacterScale({ x: 1.18, y: 0.82 }); // Squash knees
+    setJumpOffsetPx(0);
+    soundManager.playClick();
+
+    // Phase 2: Launch! Spring snaps up
     setTimeout(() => {
-      soundManager.playChimeSuccess();
-      setIsJumping(false);
-    }, planetsData[planetKey].hangTimeSec * 1000);
+      setTrampolineState('launch');
+      setBedDeflection(-8); // Bed snaps up
+      setCharacterScale({ x: 0.85, y: 1.25 }); // Elongate on launch
+      soundManager.playDoorSlide();
+
+      // Launch physics: jump height
+      const targetHeightPx = planetKey === 'asteroid' ? 360 : Math.min(260, p.jumpM * 75);
+      const flightDurationMs = planetKey === 'asteroid' ? 3000 : Math.min(3800, Math.max(500, p.hangTimeSec * 1000));
+      const ascentMs = flightDurationMs * 0.45;
+
+      // Animate ascent
+      const startTime = Date.now();
+      const ascentTimer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(1, elapsed / ascentMs);
+        // Ease out quad for gravity deceleration
+        const ease = 1 - Math.pow(1 - progress, 2);
+        setJumpOffsetPx(targetHeightPx * ease);
+
+        if (progress >= 1) {
+          clearInterval(ascentTimer);
+          // Phase 3: Apex Float
+          setTrampolineState('apex');
+          setCharacterScale({ x: 1, y: 1 });
+          setBedDeflection(0);
+
+          if (planetKey === 'asteroid') {
+            soundManager.playChimeSuccess();
+            confetti({ particleCount: 50, spread: 80, origin: { y: 0.2 } });
+            setTimeout(() => {
+              setTrampolineState('idle');
+              setJumpOffsetPx(0);
+            }, 2500);
+            return;
+          }
+
+          // Apex float pause, then fall
+          const floatPauseMs = Math.min(600, p.hangTimeSec * 160);
+          setTimeout(() => {
+            setTrampolineState('landing');
+            setCharacterScale({ x: 0.9, y: 1.15 });
+
+            // Animate accelerating descent
+            const descentStart = Date.now();
+            const descentMs = flightDurationMs * 0.45;
+            const descentTimer = setInterval(() => {
+              const dElapsed = Date.now() - descentStart;
+              const dProgress = Math.min(1, dElapsed / descentMs);
+              // Accelerating quad ease in
+              const dEase = Math.pow(dProgress, 2);
+              setJumpOffsetPx(targetHeightPx * (1 - dEase));
+
+              if (dProgress >= 1) {
+                clearInterval(descentTimer);
+                setJumpOffsetPx(0);
+                // Phase 4: Bed Impact & Absorption
+                soundManager.playLiquidDrip();
+                setBedDeflection(20);
+                setCharacterScale({ x: 1.25, y: 0.75 });
+
+                // Phase 5: Recoil settle
+                setTimeout(() => {
+                  setBedDeflection(-5);
+                  setCharacterScale({ x: 0.95, y: 1.05 });
+                  setTimeout(() => {
+                    setBedDeflection(0);
+                    setCharacterScale({ x: 1, y: 1 });
+                    setTrampolineState('idle');
+                  }, 220);
+                }, 180);
+              }
+            }, 16);
+          }, floatPauseMs);
+        }
+      }, 16);
+    }, 250);
   };
 
   return (
@@ -640,47 +787,98 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
             {/* Trampoline Stage */}
             <div className="relative w-full flex-1 flex flex-col items-center justify-end pb-8">
               
-              {/* Jump Height Meter Stick */}
-              <div className="absolute left-12 bottom-12 top-6 w-8 border-r-2 border-slate-700 flex flex-col justify-between text-[9px] text-slate-500">
+              {/* Jump Height Meter Stick & Real-Time Laser Height Bar */}
+              <div className="absolute left-10 bottom-12 top-6 w-16 border-r-2 border-slate-700 flex flex-col justify-between text-[9px] text-slate-500 font-mono">
                 <span>3.5m (Roof)</span>
                 <span>2.0m (Door)</span>
                 <span>1.0m (Table)</span>
                 <span>0.5m (Chair)</span>
-                <span>0m (Ground)</span>
+                <span>0m (Bed)</span>
               </div>
 
-              {/* Jumping Astronaut Character */}
+              {/* Dynamic Laser Height Marker following character */}
+              {jumpOffsetPx > 5 && (
+                <div
+                  style={{ bottom: `${48 + jumpOffsetPx}px` }}
+                  className="absolute left-16 right-16 border-b border-dashed border-amber-400/60 pointer-events-none flex justify-end pr-2 transition-all"
+                >
+                  <span className="text-[10px] font-mono font-bold text-amber-300 bg-slate-950/80 px-1 rounded">
+                    Height: {(jumpOffsetPx / 75).toFixed(2)} m
+                  </span>
+                </div>
+              )}
+
+              {/* Natural Physics Animated Jumping Character */}
               <div
                 style={{
-                  transform: isJumping 
-                    ? `translateY(-${Math.min(260, planetsData[trampolinePlanet].jumpM * 75)}px) scale(${isJumping ? 1.05 : 1})` 
-                    : 'translateY(0px)',
-                  transition: `transform ${planetsData[trampolinePlanet].hangTimeSec * 0.5}s cubic-bezier(0.25, 1, 0.5, 1)`,
+                  transform: `translateY(-${jumpOffsetPx}px) scale(${characterScale.x}, ${characterScale.y})`,
+                  transition: trampolineState === 'squat' ? 'transform 0.25s ease-out' : 'none',
                 }}
                 className="relative z-20 flex flex-col items-center will-change-transform"
               >
-                {/* Speech Bubble when in mid-air */}
-                {isJumping && (
-                  <div className="mb-2 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 text-amber-300 text-xs font-bold animate-bounce shadow-xl">
-                    {planetsData[trampolinePlanet].jumpM > 2 ? 'Wheee! I\'m flying!' : 'Heavy gravity!'}
+                {/* Speech Bubble when in mid-air or landing */}
+                {trampolineState !== 'idle' && (
+                  <div className="mb-2 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 text-amber-300 text-xs font-bold shadow-xl animate-pulse">
+                    {trampolineState === 'squat'
+                      ? 'Squatting & loading springs...'
+                      : trampolineState === 'apex'
+                      ? (planetsData[trampolinePlanet].jumpM > 2 ? 'Wheee! Floaty apex hang-time! 🌌' : 'At the peak!')
+                      : trampolineState === 'landing'
+                      ? 'Cushioning impact!'
+                      : 'Launching!'}
                   </div>
                 )}
 
                 {/* Astronaut Emoji / Sprite */}
-                <div className="text-6xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+                <div className="text-6xl drop-shadow-[0_12px_24px_rgba(0,0,0,0.9)]">
                   🧑‍🚀
                 </div>
               </div>
 
-              {/* Trampoline Mesh & Springs */}
-              <div className="w-64 h-8 border-4 border-amber-500 bg-slate-900 rounded-full shadow-[0_10px_25px_rgba(245,158,11,0.3)] relative z-10 flex items-center justify-center">
-                <div className="w-56 h-3 bg-amber-400/40 rounded-full" />
-              </div>
-              {/* Trampoline Steel Legs */}
-              <div className="w-52 flex justify-between -mt-2">
-                <div className="w-2.5 h-10 bg-slate-700 rounded-b" />
-                <div className="w-2.5 h-10 bg-slate-700 rounded-b" />
-                <div className="w-2.5 h-10 bg-slate-700 rounded-b" />
+              {/* Dynamic Trampoline Bed with Real Spring Stretch and Sag Curve */}
+              <div className="relative w-72 flex flex-col items-center z-10">
+                <svg viewBox="0 0 280 50" className="w-full h-12 overflow-visible">
+                  {/* Outer Steel Tubular Ring */}
+                  <rect x="0" y="20" width="280" height="10" fill="#1e293b" stroke="#f59e0b" strokeWidth="2.5" rx="5" />
+
+                  {/* Left Coil Springs */}
+                  <path
+                    d={`M 10 25 Q 15 ${25 + bedDeflection * 0.3} 20 ${25 + bedDeflection * 0.4}`}
+                    stroke="#94a3b8"
+                    strokeWidth="3"
+                    fill="none"
+                  />
+                  {/* Right Coil Springs */}
+                  <path
+                    d={`M 260 ${25 + bedDeflection * 0.4} Q 265 ${25 + bedDeflection * 0.3} 270 25`}
+                    stroke="#94a3b8"
+                    strokeWidth="3"
+                    fill="none"
+                  />
+
+                  {/* Elastic Bed Fabric (Naturally sags when squatted or landed on!) */}
+                  <path
+                    d={`M 20 ${25 + bedDeflection * 0.4} Q 140 ${25 + bedDeflection} 260 ${25 + bedDeflection * 0.4}`}
+                    stroke="#fbbf24"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                  {/* Subtle Shadow under sagged bed */}
+                  <path
+                    d={`M 20 ${28 + bedDeflection * 0.4} Q 140 ${28 + bedDeflection} 260 ${28 + bedDeflection * 0.4}`}
+                    stroke="rgba(0,0,0,0.4)"
+                    strokeWidth="3"
+                    fill="none"
+                  />
+                </svg>
+
+                {/* Trampoline Steel Legs */}
+                <div className="w-56 flex justify-between -mt-3.5">
+                  <div className="w-3 h-10 bg-slate-700 rounded-b shadow-md" />
+                  <div className="w-3 h-10 bg-slate-700 rounded-b shadow-md" />
+                  <div className="w-3 h-10 bg-slate-700 rounded-b shadow-md" />
+                </div>
               </div>
 
             </div>
@@ -688,7 +886,7 @@ export const UnthinkableCosmicPhysics: React.FC = () => {
             {/* Jump Button */}
             <button
               onClick={() => triggerTrampolineJump(trampolinePlanet)}
-              disabled={isJumping}
+              disabled={trampolineState !== 'idle'}
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               <Zap className="w-4 h-4 fill-current" /> Jump on Trampoline!

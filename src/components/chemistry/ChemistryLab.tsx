@@ -58,6 +58,8 @@ export const ChemistryLab: React.FC = () => {
   const [analyteMolarity] = useState<number>(0.10); // 0.1M HCl analyte
   const [analyteVolume] = useState<number>(25.0); // 25 mL
   const [titrantMolarity] = useState<number>(0.10); // 0.1M NaOH titrant
+  const [titrationActiveDrops, setTitrationActiveDrops] = useState<Array<{ id: number }>>([]);
+  const [titrationRipples, setTitrationRipples] = useState<Array<{ id: number }>>([]);
 
   // Calculate titration pH based on dispensed volume
   const equivalenceVolume = (analyteMolarity * analyteVolume) / titrantMolarity; // 25.0 mL
@@ -103,24 +105,53 @@ export const ChemistryLab: React.FC = () => {
 
   const titrationState = calculateTitrationState();
 
-  // Titration automatic drop ticker
+  // Titration automatic drop ticker with real sequential water drops
   useEffect(() => {
     if (titrationDropRate === 0 || buretteVolume <= 0) return;
 
     const interval = setInterval(() => {
-      setBuretteVolume((prev) => {
-        const next = Math.max(0, prev - (0.1 * titrationDropRate));
-        return parseFloat(next.toFixed(2));
-      });
-      setDispensedVolume((prev) => {
-        const next = Math.min(50, prev + (0.1 * titrationDropRate));
-        return parseFloat(next.toFixed(2));
-      });
-      soundManager.playLiquidDrip();
-    }, 400 / titrationDropRate);
+      const dropId = Date.now() + Math.random();
+      setTitrationActiveDrops((prev) => [...prev.slice(-3), { id: dropId }]);
+
+      // When drop falls and hits solution surface in flask (240ms later)
+      setTimeout(() => {
+        soundManager.playLiquidDrip();
+        setTitrationRipples((prev) => [...prev.slice(-3), { id: Date.now() }]);
+        setBuretteVolume((prev) => {
+          const next = Math.max(0, prev - (0.05 * titrationDropRate));
+          return parseFloat(next.toFixed(2));
+        });
+        setDispensedVolume((prev) => {
+          const next = Math.min(50, prev + (0.05 * titrationDropRate));
+          return parseFloat(next.toFixed(2));
+        });
+      }, 230);
+
+      // Clean up drop element after fall animation completes
+      setTimeout(() => {
+        setTitrationActiveDrops((prev) => prev.filter((d) => d.id !== dropId));
+      }, 420);
+
+    }, Math.max(180, 700 / titrationDropRate));
 
     return () => clearInterval(interval);
   }, [titrationDropRate, buretteVolume]);
+
+  // Manual single drop dispenser for precision endpoint determination
+  const dispenseManualTitrationDrop = () => {
+    if (buretteVolume <= 0) return;
+    const dropId = Date.now();
+    setTitrationActiveDrops((prev) => [...prev, { id: dropId }]);
+    setTimeout(() => {
+      soundManager.playLiquidDrip();
+      setTitrationRipples((prev) => [...prev.slice(-3), { id: Date.now() }]);
+      setBuretteVolume((prev) => parseFloat(Math.max(0, prev - 0.05).toFixed(2)));
+      setDispensedVolume((prev) => parseFloat(Math.min(50, prev + 0.05).toFixed(2)));
+    }, 230);
+    setTimeout(() => {
+      setTitrationActiveDrops((prev) => prev.filter((d) => d.id !== dropId));
+    }, 420);
+  };
 
   // Real tactile sequenced water drop engine: drops fall one after another
   const triggerDropletsSequence = (count: number = 3, colorOverride?: string) => {
@@ -935,6 +966,17 @@ export const ChemistryLab: React.FC = () => {
                   <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block mb-2">
                     Burette Stopcock Valve:
                   </span>
+
+                  {/* Manual Precise 1-Drop Dispenser */}
+                  <button
+                    onClick={dispenseManualTitrationDrop}
+                    disabled={buretteVolume <= 0}
+                    className="w-full mb-2 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 disabled:opacity-50"
+                    title="Dispense exactly 1 drop (0.05 mL) to find the sharp endpoint"
+                  >
+                    <span>💧 Dispense 1 Precise Drop (0.05 mL)</span>
+                  </button>
+
                   <div className="grid grid-cols-4 gap-1.5">
                     {[
                       { rate: 0, label: 'Close' },
@@ -1021,29 +1063,52 @@ export const ChemistryLab: React.FC = () => {
                   {/* Jet Tip */}
                   <div className="w-1.5 h-4 bg-slate-300/80 rounded-b-full" />
 
-                  {/* Falling Drops Corridor between Burette and Flask */}
-                  <div className="relative w-8 h-10 flex flex-col items-center justify-between my-0.5 overflow-hidden">
-                    {titrationDropRate === 6 && buretteVolume > 0 ? (
-                      /* Continuous Laminar Fluid Stream */
-                      <div className="w-1.5 h-full bg-cyan-300 shadow-[0_0_10px_#38bdf8] rounded-full animate-pulse" />
-                    ) : titrationDropRate > 0 && buretteVolume > 0 ? (
-                      /* Discontinuous Falling Drops */
-                      <div className="relative w-full h-full flex flex-col items-center justify-around">
-                        <div className="w-2 h-3 rounded-full rounded-t-sm bg-cyan-300 shadow-[0_0_8px_#38bdf8] animate-bounce" />
-                        <div className="w-1.5 h-2.5 rounded-full rounded-t-sm bg-cyan-400 shadow-[0_0_6px_#38bdf8] animate-pulse" />
-                      </div>
-                    ) : null}
+                  {/* Actual Falling Drops Corridor between Burette and Flask */}
+                  <div className="relative w-12 h-14 flex flex-col items-center justify-start my-0.5 overflow-visible pointer-events-none">
+                    {/* Continuous Laminar Fluid Stream for rate 6 */}
+                    {titrationDropRate === 6 && buretteVolume > 0 && (
+                      <div className="w-1.5 h-full bg-cyan-300 shadow-[0_0_12px_#38bdf8] rounded-full animate-pulse" />
+                    )}
+
+                    {/* Actual Falling Water Drops */}
+                    {titrationActiveDrops.map((drop) => (
+                      <svg
+                        key={drop.id}
+                        viewBox="0 0 24 32"
+                        className="absolute left-1/2 -translate-x-1/2 w-3.5 h-5 filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
+                        style={{
+                          animation: 'titrationDropFall 0.28s cubic-bezier(0.4, 0, 0.8, 0.4) forwards',
+                        }}
+                      >
+                        <defs>
+                          <radialGradient id={`titrateDropGrad-${drop.id}`} cx="35%" cy="30%" r="70%">
+                            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                            <stop offset="40%" stopColor="#38bdf8" />
+                            <stop offset="100%" stopColor="#0284c7" />
+                          </radialGradient>
+                        </defs>
+                        <path
+                          d="M 12 1 C 12 1, 3 13, 3 20 C 3 25.5 7 30 12 30 C 17 30 21 25.5 21 20 C 21 13, 12 1, 12 1 Z"
+                          fill={`url(#titrateDropGrad-${drop.id})`}
+                        />
+                        <ellipse cx="9" cy="18" rx="2" ry="3.5" fill="#ffffff" opacity="0.85" />
+                      </svg>
+                    ))}
                   </div>
 
                   {/* Conical Flask on White Tile */}
                   <div className="relative w-28 h-24 border-2 border-slate-400/80 bg-white/5 rounded-b-3xl rounded-t-lg overflow-hidden flex flex-col justify-end shadow-2xl">
                     
-                    {/* Droplet Impact Ripple on Analyte Surface */}
-                    {titrationDropRate > 0 && buretteVolume > 0 && (
-                      <div className="absolute top-2 inset-x-0 flex justify-center pointer-events-none z-10">
-                        <span className="w-6 h-1.5 rounded-full border border-cyan-200 animate-ping" />
-                      </div>
-                    )}
+                    {/* Concentric Droplet Impact Surface Ripples */}
+                    <div className="absolute top-1 inset-x-0 flex items-center justify-center pointer-events-none h-2 z-10">
+                      {titrationRipples.map((rip) => (
+                        <span
+                          key={rip.id}
+                          style={{ animation: 'waterRippleRing 0.7s ease-out forwards' }}
+                          className="absolute w-10 h-2.5 rounded-full border-2 border-cyan-200/90 pointer-events-none"
+                        />
+                      ))}
+                    </div>
 
                     {/* Analyte Solution with Dynamic Color Transition */}
                     <div
