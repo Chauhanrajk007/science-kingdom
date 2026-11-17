@@ -7,7 +7,7 @@ import { AstronomyStation } from './AstronomyStation';
 import { PhysWorkbenchRealistic } from './PhysWorkbenchRealistic';
 import { UnthinkableCosmicPhysics } from './UnthinkableCosmicPhysics';
 import { soundManager } from '../../audio/SoundManager';
-import { Sun, Activity, Zap, Orbit, Compass, Rocket, ArrowLeft, Atom, Sparkles } from 'lucide-react';
+import { Sun, Activity, Zap, Telescope, Compass, Rocket, ArrowLeft, Atom, Sparkles, Orbit } from 'lucide-react';
 
 export const PhysicsLab: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'classical' | 'unthinkable'>('table');
@@ -28,8 +28,8 @@ export const PhysicsLab: React.FC = () => {
     },
     {
       id: 'astronomy' as const,
-      label: '3D Solar System & Planets',
-      badge: 'Planetary Orbits • Sun & Worlds',
+      label: "Planetary Science",
+      badge: 'Real NASA & ISRO Telemetry',
       icon: <Orbit className="w-4 h-4 text-cyan-400" />,
     },
     {

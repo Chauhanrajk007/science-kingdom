@@ -69,4 +69,18 @@ export interface AstronomyTarget {
   color: string;
   hasRings?: boolean;
   orbitalPeriod?: string;
+  gravity?: string;
+  escapeVelocity?: string;
+  moonsCount?: number;
+  atmosphere?: string;
+  nasaData?: {
+    missionHighlight: string;
+    keyFact: string;
+    spacecraft: string[];
+  };
+  isroData?: {
+    missionHighlight: string;
+    keyAchievement: string;
+    spacecraft: string[];
+  };
 }
