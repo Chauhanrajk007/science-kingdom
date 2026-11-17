@@ -46,15 +46,15 @@ export const SenkuGuide: React.FC<SenkuGuideProps> = ({
         title="Click anywhere to dismiss"
       />
 
-      <div className="fixed bottom-3 sm:bottom-5 inset-x-3 sm:inset-x-8 max-w-4xl mx-auto z-50 pointer-events-auto animate-in slide-in-from-bottom-6 duration-300">
-        <div className="relative flex items-end">
+      <div className="fixed bottom-3 sm:bottom-5 inset-x-3 sm:inset-x-6 max-w-3xl mx-auto z-50 pointer-events-auto animate-in slide-in-from-bottom-6 duration-300">
+        <div className="relative flex items-end gap-2 sm:gap-4">
           
-          {/* Mecha Senku Character Sprite */}
-          <div className="relative -mb-2 -mr-6 sm:-mr-10 z-20 shrink-0 w-36 sm:w-56 md:w-64 select-none pointer-events-none drop-shadow-[0_15px_35px_rgba(0,0,0,0.9)]">
+          {/* Mecha Senku Character Sprite - Positioned cleanly alongside, NEVER overlapping or covering text */}
+          <div className="shrink-0 select-none pointer-events-none drop-shadow-[0_12px_30px_rgba(0,0,0,0.9)]">
             <img
               src="/assets/mecha_senku.png"
               alt="Mecha Senku"
-              className="w-full h-auto max-h-[300px] sm:max-h-[380px] object-contain object-bottom"
+              className="w-24 sm:w-36 md:w-44 h-auto max-h-[220px] sm:max-h-[280px] object-contain object-bottom"
             />
           </div>
 
@@ -65,7 +65,7 @@ export const SenkuGuide: React.FC<SenkuGuideProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            className="relative flex-1 rounded-2xl bg-slate-950/95 border-2 border-emerald-400/80 shadow-[0_16px_50px_rgba(0,0,0,0.95)] p-4 sm:p-5 backdrop-blur-xl z-10 flex flex-col justify-between min-h-[110px] cursor-pointer hover:border-emerald-300 transition-colors"
+            className="relative flex-1 rounded-2xl bg-slate-950/95 border-2 border-emerald-400/80 shadow-[0_16px_50px_rgba(0,0,0,0.95)] p-4 sm:p-5 backdrop-blur-xl flex flex-col justify-between min-h-[110px] cursor-pointer hover:border-emerald-300 transition-colors"
             title="Click anywhere on the box or screen to dismiss"
           >
             {/* Top: ONLY His Name */}
