@@ -161,9 +161,23 @@ export const OpticsBench: React.FC = () => {
             <svg viewBox="0 0 800 360" className="w-full h-full">
               <defs>
                 <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(56, 189, 248, 0.4)" />
-                  <stop offset="50%" stopColor="rgba(255, 255, 255, 0.7)" />
-                  <stop offset="100%" stopColor="rgba(56, 189, 248, 0.4)" />
+                  <stop offset="0%" stopColor="rgba(56, 189, 248, 0.45)" />
+                  <stop offset="35%" stopColor="rgba(255, 255, 255, 0.85)" />
+                  <stop offset="65%" stopColor="rgba(224, 242, 254, 0.7)" />
+                  <stop offset="100%" stopColor="rgba(192, 132, 252, 0.45)" />
+                </linearGradient>
+                <linearGradient id="rainbowFanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+                  <stop offset="25%" stopColor="#ef4444" stopOpacity="0.45" />
+                  <stop offset="45%" stopColor="#eab308" stopOpacity="0.45" />
+                  <stop offset="70%" stopColor="#22c55e" stopOpacity="0.45" />
+                  <stop offset="85%" stopColor="#06b6d4" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#a855f7" stopOpacity="0.55" />
+                </linearGradient>
+                <linearGradient id="brassRiderGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#b45309" />
+                  <stop offset="40%" stopColor="#fbbf24" />
+                  <stop offset="100%" stopColor="#d97706" />
                 </linearGradient>
               </defs>
 
@@ -206,27 +220,62 @@ export const OpticsBench: React.FC = () => {
               {/* --- PRISM DISPERSION MODE --- */}
               {element === 'prism' ? (
                 <g>
-                  {/* Glass Prism Triangle */}
-                  <polygon points="400,100 340,260 460,260" fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
-                  {/* Incident White Beam */}
-                  <line x1="100" y1="210" x2="360" y2="180" stroke="#ffffff" strokeWidth="4" />
-                  {/* Rainbow Refracted Beams */}
+                  {/* Glass Prism Rider Stand */}
+                  <rect x="375" y="260" width="50" height="20" fill="url(#brassRiderGrad)" stroke="#78350f" strokeWidth="1.5" rx="3" />
+                  <circle cx="400" cy="270" r="4" fill="#451a03" />
+
+                  {/* Equilateral Borosilicate Glass Prism */}
+                  <polygon points="400,95 330,260 470,260" fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
+                  <polygon points="400,98 335,258 465,258" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
+
+                  {/* Incident Collimated White Light Beam */}
+                  <line x1="80" y1="215" x2="355" y2="182" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
+                  <line x1="80" y1="215" x2="355" y2="182" stroke="#e0f2fe" strokeWidth="2" />
+                  <text x="140" y="200" fill="#ffffff" fontSize="11" fontWeight="bold" fontFamily="monospace">Incident White Light</text>
+
+                  {/* Internal Dispersion Path */}
+                  <polygon points="355,182 425,174 425,188" fill="url(#rainbowFanGrad)" opacity="0.8" />
+
+                  {/* Rich Continuous Emerging Spectral Rainbow Fan */}
+                  <polygon points="425,174 720,105 720,250 425,188" fill="url(#rainbowFanGrad)" />
+
+                  {/* Sharp Spectral Ray Lines */}
                   {[
-                    { col: '#ef4444', dev: 20 },
-                    { col: '#f97316', dev: 23 },
-                    { col: '#eab308', dev: 26 },
-                    { col: '#22c55e', dev: 29 },
-                    { col: '#06b6d4', dev: 33 },
-                    { col: '#a855f7', dev: 37 },
+                    { col: '#ef4444', dev: 18, nm: '700nm (Red)' },
+                    { col: '#f97316', dev: 22, nm: '620nm (Orange)' },
+                    { col: '#eab308', dev: 26, nm: '580nm (Yellow)' },
+                    { col: '#22c55e', dev: 30, nm: '530nm (Green)' },
+                    { col: '#06b6d4', dev: 34, nm: '490nm (Cyan)' },
+                    { col: '#3b82f6', dev: 38, nm: '450nm (Blue)' },
+                    { col: '#a855f7', dev: 43, nm: '400nm (Violet)' },
                   ].map((rb, idx) => (
-                    <line key={idx} x1="430" y1={175 + idx * 2} x2="720" y2={120 + rb.dev * 3} stroke={rb.col} strokeWidth="2.5" opacity="0.9" />
+                    <g key={idx}>
+                      <line
+                        x1="425"
+                        y1={174 + idx * 2.2}
+                        x2="720"
+                        y2={110 + rb.dev * 3.1}
+                        stroke={rb.col}
+                        strokeWidth="2.5"
+                        opacity="0.95"
+                      />
+                      <circle cx="720" cy={110 + rb.dev * 3.1} r="3" fill={rb.col} />
+                    </g>
                   ))}
-                  <text x="730" y="140" fill="#a855f7" fontSize="10" fontWeight="bold">Violet (Max Dev)</text>
-                  <text x="730" y="240" fill="#ef4444" fontSize="10" fontWeight="bold">Red (Min Dev)</text>
+
+                  {/* White Projection Screen */}
+                  <rect x="720" y="90" width="12" height="175" fill="#f8fafc" stroke="#94a3b8" strokeWidth="2" rx="2" />
+                  <text x="738" y="115" fill="#ef4444" fontSize="10" fontWeight="bold">Red (Least Bent)</text>
+                  <text x="738" y="248" fill="#a855f7" fontSize="10" fontWeight="bold">Violet (Most Bent)</text>
+                  <text x="738" y="180" fill="#64748b" fontSize="9" fontFamily="monospace">Continuous Spectrum</text>
                 </g>
               ) : (
                 /* --- LENS / MIRROR MODE --- */
                 <g>
+                  {/* Optical Element Rider Stand with Brass Thumbscrew */}
+                  <rect x={benchCenterX - 18} y="265" width="36" height="18" fill="url(#brassRiderGrad)" stroke="#78350f" strokeWidth="1.5" rx="2" />
+                  <circle cx={benchCenterX} cy="274" r="3.5" fill="#451a03" />
+
                   {/* Optical Element at Center (x = 400) */}
                   {element.includes('convex') ? (
                     // Convex element shape
@@ -236,20 +285,26 @@ export const OpticsBench: React.FC = () => {
                     <path d={`M ${benchCenterX - 8} 90 Q ${benchCenterX + 4} 180 ${benchCenterX - 8} 270 L ${benchCenterX + 8} 270 Q ${benchCenterX - 4} 180 ${benchCenterX + 8} 90 Z`} fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
                   )}
 
-                  {/* ELEMENT MOUNT ON RAIL */}
-                  <rect x={benchCenterX - 10} y="270" width="20" height="14" fill="#334155" stroke="#94a3b8" />
-
                   {/* 1. CANDLE OBJECT on Left */}
                   <g>
-                    {/* Candle Stand on rail */}
-                    <rect x={candleX - 12} y="270" width="24" height="12" fill="#d97706" />
-                    {/* Candle Body */}
-                    <rect x={candleX - 6} y={180 - candleH} width="12" height={candleH} fill="#fef08a" stroke="#d97706" strokeWidth="1.5" rx="2" />
-                    {/* Wick & Animated Flame */}
-                    <line x1={candleX} y1={180 - candleH} x2={candleX} y2={180 - candleH - 6} stroke="#000" strokeWidth="2" />
-                    <ellipse cx={candleX} cy={180 - candleH - 12} rx="5" ry="9" fill="#f59e0b" className="animate-pulse" />
-                    <ellipse cx={candleX} cy={180 - candleH - 10} rx="2.5" ry="5" fill="#fef08a" />
-                    <text x={candleX} y="260" fill="#f59e0b" fontSize="10" fontWeight="bold" textAnchor="middle">Object</text>
+                    {/* Brass Candle Stand on rail rider */}
+                    <rect x={candleX - 16} y="265" width="32" height="18" fill="url(#brassRiderGrad)" stroke="#78350f" strokeWidth="1.5" rx="2" />
+                    <circle cx={candleX} cy="274" r="3.5" fill="#451a03" />
+
+                    {/* Wax Candle Body with dripping texture */}
+                    <rect x={candleX - 7} y={180 - candleH} width="14" height={candleH} fill="#fef08a" stroke="#d97706" strokeWidth="1.5" rx="3" />
+                    <line x1={candleX - 5} y1={180 - candleH + 4} x2={candleX + 5} y2={180 - candleH + 4} stroke="#ffffff" strokeWidth="1.5" />
+
+                    {/* Carbon Wick */}
+                    <line x1={candleX} y1={180 - candleH} x2={candleX} y2={180 - candleH - 7} stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" />
+
+                    {/* Realistic Multi-Layer Glowing Flame */}
+                    <ellipse cx={candleX} cy={180 - candleH - 14} rx="7" ry="13" fill="#f59e0b" opacity="0.3" className="animate-pulse" />
+                    <ellipse cx={candleX} cy={180 - candleH - 13} rx="5" ry="10" fill="#f59e0b" />
+                    <ellipse cx={candleX} cy={180 - candleH - 11} rx="3" ry="6" fill="#fef08a" />
+                    <ellipse cx={candleX} cy={180 - candleH - 8} rx="1.5" ry="3" fill="#38bdf8" />
+
+                    <text x={candleX} y="258" fill="#f59e0b" fontSize="10" fontWeight="bold" textAnchor="middle">Candle (Object)</text>
                   </g>
 
                   {/* 2. LIGHT RAYS TRACING */}

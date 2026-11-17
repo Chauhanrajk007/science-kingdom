@@ -41,10 +41,13 @@ export const ChemistryLab: React.FC = () => {
   const [volumeMl, setVolumeMl] = useState<number>(0);
   const [filterCategory, setFilterCategory] = useState<'all' | 'acid' | 'base' | 'salt' | 'reactive'>('all');
   
-  // Real Pipette Dropper Animation State
+  // Real Sequenced Pipette Dropper Animation State
   const [isDroppingWithPipette, setIsDroppingWithPipette] = useState<boolean>(false);
   const [droppingReagentColor, setDroppingReagentColor] = useState<string>('#38bdf8');
-  const [dropletCount, setDropletCount] = useState<number>(0);
+  const [activeDrops, setActiveDrops] = useState<Array<{ id: number; color: string; delayMs: number }>>([]);
+  const [ripples, setRipples] = useState<Array<{ id: number }>>([]);
+  const [isBulbSqueezing, setIsBulbSqueezing] = useState<boolean>(false);
+  const [pipetteLiquidLevel, setPipetteLiquidLevel] = useState<number>(75);
 
   // --- TITRATION LAB STATE ---
   const [buretteVolume, setBuretteVolume] = useState<number>(50.0); // 50 mL burette
@@ -119,36 +122,59 @@ export const ChemistryLab: React.FC = () => {
     return () => clearInterval(interval);
   }, [titrationDropRate, buretteVolume]);
 
-  // Handle adding reagent to reaction simulator with real Pipette Dropper animation
-  const handleAddReagent = async (reagent: ChemicalReagent) => {
-    // 1. Activate Dropper Pipette above vessel
+  // Real tactile sequenced water drop engine: drops fall one after another
+  const triggerDropletsSequence = (count: number = 3, colorOverride?: string) => {
+    const chosenColor = colorOverride || droppingReagentColor || '#38bdf8';
+    setIsBulbSqueezing(true);
     setIsDroppingWithPipette(true);
-    setDroppingReagentColor(reagent.color);
-    setDropletCount(1);
-    soundManager.playLiquidDrip();
+    
+    // Create staggered sequential drops (spaced 240ms apart)
+    const drops = Array.from({ length: count }, (_, idx) => ({
+      id: Date.now() + idx,
+      color: chosenColor,
+      delayMs: idx * 240,
+    }));
 
-    // 2. Cascade droplets
-    setTimeout(() => {
-      soundManager.playLiquidDrip();
-      setDropletCount(2);
-    }, 320);
+    setActiveDrops(drops);
 
-    setTimeout(() => {
-      soundManager.playLiquidDrip();
-      setDropletCount(3);
-      setVolumeMl((prev) => Math.min(250, prev + 25));
-      setLiquidColor(reagent.color);
-    }, 640);
+    // Each drop accelerates down and splashes into the beaker liquid
+    drops.forEach((drop) => {
+      // Squeeze bulb pulse
+      setTimeout(() => {
+        setIsBulbSqueezing(true);
+      }, drop.delayMs);
+      setTimeout(() => {
+        setIsBulbSqueezing(false);
+      }, drop.delayMs + 160);
 
+      // Splash impact at bottom
+      setTimeout(() => {
+        soundManager.playLiquidDrip();
+        setRipples((prev) => [...prev.slice(-4), { id: Date.now() + Math.random() }]);
+        setVolumeMl((prev) => Math.min(250, prev + 12));
+        setPipetteLiquidLevel((prev) => Math.max(12, prev - 14));
+      }, drop.delayMs + 440);
+    });
+
+    const totalDuration = (count - 1) * 240 + 750;
     setTimeout(() => {
+      setActiveDrops([]);
       setIsDroppingWithPipette(false);
-      setDropletCount(0);
-    }, 1100);
+    }, totalDuration);
+  };
+
+  // Handle adding reagent to reaction simulator with real Sequenced Pipette Dropper animation
+  const handleAddReagent = async (reagent: ChemicalReagent) => {
+    setDroppingReagentColor(reagent.color);
+    setPipetteLiquidLevel(85);
+
+    // 1. Release sequential water drops falling one after another!
+    triggerDropletsSequence(3, reagent.color);
 
     const updated = [...addedReagents, reagent];
     setAddedReagents(updated);
 
-    // Analyze reaction via AI & Chemical Knowledge Matrix
+    // Analyze reaction via Chemical Knowledge Matrix
     setIsReacting(true);
     const result = await predictChemicalReaction(updated.map((r) => r.id));
     setIsReacting(false);
@@ -164,10 +190,13 @@ export const ChemistryLab: React.FC = () => {
           setTimeout(() => setIsExploding(false), 3000);
         } else if (result.isPrecipitate) {
           soundManager.playChimeSuccess();
-          confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
         } else {
-          soundManager.playGlassClink();
+          soundManager.playChemicalReaction();
         }
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        setLiquidColor(reagent.color);
       }, 700);
     }
   };
@@ -507,40 +536,38 @@ export const ChemistryLab: React.FC = () => {
                     </span>
                   </div>
                 ) : (
-                  /* --- VIEW B: FRONT WORKBENCH SIDE VIEW WITH INTERACTIVE GLASS PIPETTE --- */
-                  <div className="relative flex flex-col items-center justify-end h-80 w-64 animate-in fade-in duration-300 pt-20">
+                  /* --- VIEW B: FRONT WORKBENCH SIDE VIEW WITH INTERACTIVE GLASS PIPETTE & SEQUENCED WATER DROPS --- */
+                  <div className="relative flex flex-col items-center justify-end h-88 w-72 animate-in fade-in duration-300 pt-20">
                     
                     {/* High-Precision Interactive Glass Dropper Pipette */}
                     <div
-                      className={`absolute top-1 z-30 transition-all duration-500 flex flex-col items-center ${
-                        isDroppingWithPipette ? 'opacity-100 translate-y-2' : 'opacity-85 translate-y-0'
-                      }`}
+                      className="absolute top-1 z-30 flex flex-col items-center"
                     >
                       {/* Interactive Rubber Squeeze Bulb (Clickable to dispense drops!) */}
                       <button
-                        onClick={() => {
-                          soundManager.playLiquidDrip();
-                          setDropletCount((prev) => (prev % 3) + 1);
-                          setVolumeMl((prev) => Math.min(250, prev + 15));
-                        }}
-                        title="Click to squeeze a drop!"
+                        onClick={() => triggerDropletsSequence(1)}
+                        title="Click rubber bulb to squeeze a water drop!"
                         className="group relative flex flex-col items-center cursor-pointer transition-transform active:scale-95"
                       >
                         <div
                           style={{
-                            transform: isDroppingWithPipette ? 'scaleY(0.74) scaleX(1.18)' : 'scale(1)',
-                            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                            transform: isBulbSqueezing ? 'scaleY(0.72) scaleX(1.22)' : 'scale(1)',
+                            transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
                           }}
                           className="w-9 h-12 rounded-t-full bg-gradient-to-b from-rose-500 via-red-600 to-rose-900 border-2 border-rose-400 shadow-[0_6px_20px_rgba(244,63,94,0.4)] relative flex items-center justify-center group-hover:brightness-110"
                         >
+                          {/* Squeeze ribbing texture */}
                           <div className="w-1.5 h-7 bg-white/30 rounded-full blur-[0.5px] -ml-2.5" />
+                          <div className="absolute top-2 w-5 h-0.5 bg-black/30 rounded" />
+                          <div className="absolute top-5 w-6 h-0.5 bg-black/30 rounded" />
+                          <div className="absolute top-8 w-5 h-0.5 bg-black/30 rounded" />
                         </div>
 
-                        {/* Metallic Collar Ring */}
-                        <div className="w-7 h-2.5 bg-gradient-to-r from-slate-400 via-slate-100 to-slate-500 rounded-sm shadow-md" />
+                        {/* Metallic Brass Collar Ring */}
+                        <div className="w-7 h-2.5 bg-gradient-to-r from-amber-400 via-amber-200 to-amber-600 rounded-sm shadow-md" />
 
                         {/* Transparent Borosilicate Glass Pipette Barrel */}
-                        <div className="w-4 h-24 border-2 border-white/80 bg-gradient-to-r from-white/30 via-transparent to-white/15 relative rounded-b flex flex-col justify-end overflow-hidden shadow-xl backdrop-blur-sm">
+                        <div className="w-4 h-24 border-2 border-white/80 bg-gradient-to-r from-white/35 via-white/10 to-white/20 relative rounded-b flex flex-col justify-end overflow-hidden shadow-2xl backdrop-blur-sm">
                           {/* Calibrated Meniscus Markings */}
                           <div className="absolute inset-0 flex flex-col justify-between py-1.5 px-0.5 text-[5px] font-mono text-slate-300 pointer-events-none">
                             <span>- 3mL</span>
@@ -548,39 +575,60 @@ export const ChemistryLab: React.FC = () => {
                             <span>- 1mL</span>
                           </div>
 
-                          {/* Suctioned Colored Liquid Column inside Pipette */}
+                          {/* Liquid Column inside Pipette */}
                           <div
                             style={{
                               backgroundColor: droppingReagentColor,
-                              height: isDroppingWithPipette ? (dropletCount === 1 ? '70%' : dropletCount === 2 ? '40%' : '15%') : '65%',
-                              transition: 'height 0.35s ease-out',
+                              height: `${pipetteLiquidLevel}%`,
+                              transition: 'height 0.3s ease-out',
                             }}
-                            className="w-full opacity-95 shadow-inner"
-                          />
+                            className="w-full relative opacity-90 shadow-inner"
+                          >
+                            {/* Liquid Meniscus Curve */}
+                            <div className="absolute top-0 inset-x-0 h-1 bg-white/40 rounded-full blur-[0.5px]" />
+                          </div>
                         </div>
 
                         {/* Fine Tapered Capillary Jet Nozzle */}
-                        <div className="w-1.5 h-5 bg-white/80 border-x border-b border-white rounded-b-full shadow-sm" />
-                      </button>
-
-                      {/* Smooth Gravity-Accelerated Liquid Teardrop Falling into Beaker */}
-                      {dropletCount > 0 && (
-                        <div className="relative w-6 h-12 flex flex-col items-center justify-start overflow-visible pointer-events-none">
+                        <div className="w-1.5 h-5 bg-white/80 border-x border-b border-white rounded-b-full shadow-sm relative flex flex-col items-center justify-end">
                           <div
-                            key={dropletCount}
-                            style={{
-                              backgroundColor: droppingReagentColor,
-                              boxShadow: `0 0 14px ${droppingReagentColor}`,
-                            }}
-                            className="w-3 h-4 rounded-b-full rounded-t-sm animate-in fade-in slide-in-from-top-3 duration-300 transform scale-110"
+                            style={{ backgroundColor: droppingReagentColor }}
+                            className="w-1 h-3 rounded-b-full opacity-90"
                           />
                         </div>
-                      )}
+                      </button>
+
+                      {/* Actual Cascading Water Drops Falling 1 After The Other */}
+                      <div className="absolute top-[158px] left-1/2 -translate-x-1/2 w-8 h-36 pointer-events-none overflow-visible">
+                        {activeDrops.map((drop) => (
+                          <svg
+                            key={drop.id}
+                            viewBox="0 0 24 32"
+                            className="absolute left-1/2 -translate-x-1/2 w-4 h-6 filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+                            style={{
+                              animation: `waterDropFall 0.52s cubic-bezier(0.4, 0, 0.8, 0.4) ${drop.delayMs}ms forwards`,
+                            }}
+                          >
+                            <defs>
+                              <radialGradient id={`dropGrad-${drop.id}`} cx="35%" cy="30%" r="70%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                                <stop offset="35%" stopColor={drop.color} />
+                                <stop offset="100%" stopColor="#020617" stopOpacity="0.8" />
+                              </radialGradient>
+                            </defs>
+                            <path
+                              d="M 12 1 C 12 1, 3 13, 3 20 C 3 25.5 7 30 12 30 C 17 30 21 25.5 21 20 C 21 13, 12 1, 12 1 Z"
+                              fill={`url(#dropGrad-${drop.id})`}
+                            />
+                            {/* Specular White Gloss Highlight Dot */}
+                            <ellipse cx="9" cy="18" rx="2" ry="3.5" fill="#ffffff" opacity="0.85" />
+                          </svg>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Borosilicate Glass Beaker / Flask Graphic */}
+                    {/* Borosilicate Glass Beaker Graphic */}
                     <div className="relative w-36 h-48 rounded-b-3xl border-4 border-slate-400/60 bg-white/5 backdrop-blur-sm overflow-hidden flex flex-col justify-end shadow-2xl">
-                      
                       {/* Graduated Volume Markings */}
                       <div className="absolute top-4 left-2 space-y-3 pointer-events-none text-[8px] font-mono text-slate-400">
                         <div>- 250 mL</div>
@@ -596,18 +644,21 @@ export const ChemistryLab: React.FC = () => {
                           height: `${Math.min(90, Math.max(15, (volumeMl / 250) * 100))}%`,
                           backgroundColor: liquidColor,
                         }}
-                        className="w-full relative transition-all duration-700 rounded-b-2xl"
+                        className="w-full relative transition-all duration-500 rounded-b-2xl"
                       >
                         {/* Meniscus Lip Line */}
                         <div className="absolute top-0 inset-x-0 h-2 bg-white/30 rounded-full blur-[0.5px]" />
 
-                        {/* Droplet Impact Splash Waves on surface */}
-                        {(isDroppingWithPipette || dropletCount > 0) && (
-                          <div className="absolute top-0 inset-x-0 flex items-center justify-center pointer-events-none">
-                            <span className="w-12 h-3 rounded-full border-2 border-white/90 animate-ping opacity-80" />
-                            <span className="w-6 h-1.5 rounded-full border border-white animate-pulse" />
-                          </div>
-                        )}
+                        {/* Concentric Splash Ripple Wave Rings on Surface */}
+                        <div className="absolute top-0 inset-x-0 flex items-center justify-center pointer-events-none h-2">
+                          {ripples.map((rip) => (
+                            <span
+                              key={rip.id}
+                              style={{ animation: 'waterRippleRing 0.8s ease-out forwards' }}
+                              className="absolute w-12 h-3 rounded-full border-2 border-white/80 pointer-events-none"
+                            />
+                          ))}
+                        </div>
 
                         {/* Bubbling Particles */}
                         {reactionResult?.isBubbling && (
@@ -638,6 +689,32 @@ export const ChemistryLab: React.FC = () => {
                         <div className="w-10 h-3 bg-slate-700 rounded-sm" />
                       </div>
                     )}
+
+                    {/* Tactile Pipette Controls */}
+                    <div className="flex items-center gap-2 mt-3 z-30">
+                      <button
+                        onClick={() => triggerDropletsSequence(1)}
+                        className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-emerald-400 text-[11px] font-mono text-slate-200 hover:text-white flex items-center gap-1 shadow transition-all active:scale-95"
+                        title="Squeeze 1 drop from pipette"
+                      >
+                        <span>💧 1 Drop</span>
+                      </button>
+                      <button
+                        onClick={() => triggerDropletsSequence(3)}
+                        className="px-2 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/50 hover:border-emerald-400 text-[11px] font-mono text-emerald-300 hover:text-white flex items-center gap-1 shadow transition-all active:scale-95"
+                        title="Dispense 3 drops one after another"
+                      >
+                        <span>💧💧💧 3 Drops</span>
+                      </button>
+                      <button
+                        onClick={() => setPipetteLiquidLevel(85)}
+                        className="p-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-slate-500 text-[11px] text-slate-400 hover:text-white"
+                        title="Refill Pipette"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    </div>
+
                   </div>
                 )}
 

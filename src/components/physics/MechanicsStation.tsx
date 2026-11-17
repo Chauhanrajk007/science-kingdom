@@ -371,9 +371,27 @@ export const MechanicsStation: React.FC = () => {
                   <stop offset="0%" stopColor="#334155" />
                   <stop offset="100%" stopColor="#1e293b" />
                 </linearGradient>
-                <linearGradient id="blockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="chassisGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#38bdf8" />
-                  <stop offset="100%" stopColor="#0284c7" />
+                  <stop offset="35%" stopColor="#0284c7" />
+                  <stop offset="100%" stopColor="#0369a1" />
+                </linearGradient>
+                <linearGradient id="brassGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#d97706" />
+                  <stop offset="35%" stopColor="#fbbf24" />
+                  <stop offset="70%" stopColor="#fef08a" />
+                  <stop offset="100%" stopColor="#b45309" />
+                </linearGradient>
+                <linearGradient id="wheelRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#94a3b8" />
+                  <stop offset="50%" stopColor="#f8fafc" />
+                  <stop offset="100%" stopColor="#475569" />
+                </linearGradient>
+                <linearGradient id="railGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#94a3b8" />
+                  <stop offset="30%" stopColor="#64748b" />
+                  <stop offset="70%" stopColor="#334155" />
+                  <stop offset="100%" stopColor="#0f172a" />
                 </linearGradient>
                 <marker id="arrow-green" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
@@ -402,8 +420,10 @@ export const MechanicsStation: React.FC = () => {
               {/* --- 1. FLAT SURFACE RENDERING --- */}
               {setupMode === 'flat' && (
                 <g>
-                  {/* Track Surface Table */}
-                  <rect x="40" y="240" width="720" height="26" fill="url(#rampGrad)" stroke="#475569" strokeWidth="2" rx="4" />
+                  {/* Track Surface Table & Stainless Steel Guide Rail */}
+                  <rect x="40" y="240" width="720" height="26" fill="url(#railGrad)" stroke="#475569" strokeWidth="2" rx="4" />
+                  <line x1="42" y1="242" x2="758" y2="242" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
+                  <line x1="42" y1="246" x2="758" y2="246" stroke="#0f172a" strokeWidth="1.5" />
                   
                   {/* Sliding Distance Markings that loop smoothly with positionX */}
                   {(() => {
@@ -424,59 +444,159 @@ export const MechanicsStation: React.FC = () => {
                     });
                   })()}
 
-                  {/* Sliding Wooden / Metal Block */}
+                  {/* Spring Bumper Stop at Track End */}
+                  <g>
+                    <rect x="740" y="218" width="14" height="26" fill="#334155" stroke="#94a3b8" strokeWidth="1.5" rx="3" />
+                    <path
+                      d="M 724 231 Q 728 223 732 231 Q 736 239 740 231"
+                      stroke="#94a3b8"
+                      strokeWidth="3.5"
+                      fill="none"
+                      strokeLinecap="round"
+                    />
+                  </g>
+
+                  {/* Precision Wheeled Dynamics Lab Cart */}
                   {(() => {
-                    // Visual position clamped or normalized
-                    let blockX = 80 + (trackBehavior === 'infinite' ? 240 : (positionX / 10) * 580);
+                    let cartX = 80 + (trackBehavior === 'infinite' ? 240 : (positionX / 10) * 580);
                     if (trackBehavior === 'infinite') {
-                      // Block stays centered or shows slight lead
-                      blockX = 350;
+                      cartX = 350;
                     }
-                    const bSize = Math.max(45, Math.min(75, 40 + mass * 2.5));
-                    
+                    const cartW = 105;
+                    const cartH = 28;
+                    const wheelR = 11;
+                    const wheelY = 240 - wheelR;
+                    const w1X = cartX + 22;
+                    const w2X = cartX + cartW - 22;
+                    const chassisY = 240 - 15 - cartH; // sits above wheels
+                    const wheelRot = ((positionX * 360) / (2 * Math.PI * 0.15)) % 360;
+                    const numWeights = Math.min(3, Math.max(1, Math.ceil(mass / 7)));
+
                     return (
                       <g>
-                        {/* Shadow */}
-                        <ellipse cx={blockX + bSize / 2} cy="240" rx={bSize / 2 + 5} ry="5" fill="#000000" opacity="0.6" />
-                        
-                        {/* Block */}
-                        <rect
-                          x={blockX}
-                          y={240 - bSize}
-                          width={bSize}
-                          height={bSize}
-                          fill="url(#blockGrad)"
-                          stroke="#38bdf8"
-                          strokeWidth="2.5"
-                          rx="6"
-                        />
+                        {/* Cart Shadow */}
+                        <ellipse cx={cartX + cartW / 2} cy="241" rx={cartW / 2 + 6} ry="4" fill="#000000" opacity="0.65" />
+
+                        {/* Stacked Machined Brass Mass Weights on Top */}
+                        {Array.from({ length: numWeights }).map((_, wIdx) => {
+                          const discY = chassisY - (wIdx + 1) * 9;
+                          return (
+                            <g key={wIdx}>
+                              <rect
+                                x={cartX + 25}
+                                y={discY}
+                                width={55}
+                                height={8}
+                                fill="url(#brassGrad)"
+                                stroke="#b45309"
+                                strokeWidth="1.2"
+                                rx="2"
+                              />
+                              <line x1={cartX + 27} y1={discY + 2} x2={cartX + 78} y2={discY + 2} stroke="#fef08a" strokeWidth="1" />
+                            </g>
+                          );
+                        })}
+                        {/* Total Mass Label */}
                         <text
-                          x={blockX + bSize / 2}
-                          y={240 - bSize / 2 + 4}
-                          fill="#ffffff"
-                          fontSize="13"
+                          x={cartX + cartW / 2}
+                          y={chassisY - numWeights * 9 - 3}
+                          fill="#fef08a"
+                          fontSize="10"
                           fontWeight="bold"
                           textAnchor="middle"
+                          fontFamily="monospace"
                         >
                           {mass} kg
                         </text>
+
+                        {/* Aerodynamic Anodized Aluminum Cart Chassis Body */}
+                        <rect
+                          x={cartX}
+                          y={chassisY}
+                          width={cartW}
+                          height={cartH}
+                          fill="url(#chassisGrad)"
+                          stroke="#38bdf8"
+                          strokeWidth="2"
+                          rx="4"
+                        />
+                        {/* Specular highlight stripe */}
+                        <line
+                          x1={cartX + 4}
+                          y1={chassisY + 3}
+                          x2={cartX + cartW - 4}
+                          y2={chassisY + 3}
+                          stroke="rgba(255,255,255,0.6)"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Front Bumper Rubber Tip */}
+                        <rect x={cartX + cartW} y={chassisY + 8} width="5" height="12" fill="#0f172a" rx="1.5" />
+                        <rect x={cartX - 5} y={chassisY + 8} width="5" height="12" fill="#0f172a" rx="1.5" />
+
+                        {/* Onboard Digital LCD Speedometer Display */}
+                        <rect
+                          x={cartX + 22}
+                          y={chassisY + 7}
+                          width={61}
+                          height={14}
+                          fill="#020617"
+                          stroke="#0284c7"
+                          strokeWidth="1"
+                          rx="2"
+                        />
+                        <text
+                          x={cartX + 52}
+                          y={chassisY + 17}
+                          fill="#38bdf8"
+                          fontSize="9"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                          textAnchor="middle"
+                        >
+                          v: {Math.abs(velocity).toFixed(2)} m/s
+                        </text>
+
+                        {/* Ball-Bearing Wheels with Visibly Rotating Spokes */}
+                        {/* Wheel 1 (Rear) */}
+                        <g>
+                          <circle cx={w1X} cy={wheelY} r={wheelR} fill="#1e293b" stroke="#0f172a" strokeWidth="2.5" />
+                          <circle cx={w1X} cy={wheelY} r={wheelR - 3.5} fill="url(#wheelRimGrad)" />
+                          <g transform={`rotate(${wheelRot} ${w1X} ${wheelY})`}>
+                            <line x1={w1X - 6} y1={wheelY} x2={w1X + 6} y2={wheelY} stroke="#334155" strokeWidth="1.5" />
+                            <line x1={w1X} y1={wheelY - 6} x2={w1X} y2={wheelY + 6} stroke="#334155" strokeWidth="1.5" />
+                          </g>
+                          <circle cx={w1X} cy={wheelY} r="2.5" fill="#f59e0b" />
+                        </g>
+
+                        {/* Wheel 2 (Front) */}
+                        <g>
+                          <circle cx={w2X} cy={wheelY} r={wheelR} fill="#1e293b" stroke="#0f172a" strokeWidth="2.5" />
+                          <circle cx={w2X} cy={wheelY} r={wheelR - 3.5} fill="url(#wheelRimGrad)" />
+                          <g transform={`rotate(${wheelRot} ${w2X} ${wheelY})`}>
+                            <line x1={w2X - 6} y1={wheelY} x2={w2X + 6} y2={wheelY} stroke="#334155" strokeWidth="1.5" />
+                            <line x1={w2X} y1={wheelY - 6} x2={w2X} y2={wheelY + 6} stroke="#334155" strokeWidth="1.5" />
+                          </g>
+                          <circle cx={w2X} cy={wheelY} r="2.5" fill="#f59e0b" />
+                        </g>
 
                         {/* Force Vectors */}
                         {/* Applied Force Arrow (Right) */}
                         {appliedForce > 0 && (
                           <g>
                             <line
-                              x1={blockX + bSize}
-                              y1={240 - bSize / 2}
-                              x2={blockX + bSize + Math.min(120, appliedForce * 0.9)}
-                              y2={240 - bSize / 2}
+                              x1={cartX + cartW}
+                              y1={chassisY + cartH / 2}
+                              x2={cartX + cartW + Math.min(120, appliedForce * 0.9)}
+                              y2={chassisY + cartH / 2}
                               stroke="#22c55e"
                               strokeWidth="3.5"
                               markerEnd="url(#arrow-green)"
                             />
                             <text
-                              x={blockX + bSize + Math.min(120, appliedForce * 0.9) + 8}
-                              y={240 - bSize / 2 + 4}
+                              x={cartX + cartW + Math.min(120, appliedForce * 0.9) + 8}
+                              y={chassisY + cartH / 2 + 4}
                               fill="#22c55e"
                               fontSize="11"
                               fontWeight="bold"
@@ -490,17 +610,17 @@ export const MechanicsStation: React.FC = () => {
                         {forces.frictionForce > 0 && (
                           <g>
                             <line
-                              x1={blockX}
-                              y1={240 - bSize / 2}
-                              x2={blockX - Math.min(100, forces.frictionForce * 1.5)}
-                              y2={240 - bSize / 2}
+                              x1={cartX}
+                              y1={chassisY + cartH / 2}
+                              x2={cartX - Math.min(100, forces.frictionForce * 1.5)}
+                              y2={chassisY + cartH / 2}
                               stroke="#ef4444"
                               strokeWidth="3"
                               markerEnd="url(#arrow-red)"
                             />
                             <text
-                              x={blockX - Math.min(100, forces.frictionForce * 1.5) - 8}
-                              y={240 - bSize / 2 + 4}
+                              x={cartX - Math.min(100, forces.frictionForce * 1.5) - 8}
+                              y={chassisY + cartH / 2 + 4}
                               fill="#ef4444"
                               fontSize="10"
                               textAnchor="end"
@@ -512,8 +632,24 @@ export const MechanicsStation: React.FC = () => {
                         )}
 
                         {/* Normal Force (Up) & Gravity (Down) */}
-                        <line x1={blockX + bSize / 2} y1={240 - bSize} x2={blockX + bSize / 2} y2={240 - bSize - 40} stroke="#3b82f6" strokeWidth="2.5" markerEnd="url(#arrow-blue)" />
-                        <line x1={blockX + bSize / 2} y1={240} x2={blockX + bSize / 2} y2={240 + 40} stroke="#f59e0b" strokeWidth="2.5" markerEnd="url(#arrow-amber)" />
+                        <line
+                          x1={cartX + cartW / 2}
+                          y1={chassisY}
+                          x2={cartX + cartW / 2}
+                          y2={chassisY - 35}
+                          stroke="#3b82f6"
+                          strokeWidth="2.5"
+                          markerEnd="url(#arrow-blue)"
+                        />
+                        <line
+                          x1={cartX + cartW / 2}
+                          y1={chassisY + cartH}
+                          x2={cartX + cartW / 2}
+                          y2={chassisY + cartH + 35}
+                          stroke="#f59e0b"
+                          strokeWidth="2.5"
+                          markerEnd="url(#arrow-amber)"
+                        />
                       </g>
                     );
                   })()}
