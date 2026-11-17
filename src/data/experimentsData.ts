@@ -163,7 +163,7 @@ export const REAGENTS_DATA: ChemicalReagent[] = [
 export const CELESTIAL_OBJECTS: AstronomyTarget[] = [
   {
     id: 'sun',
-    name: 'The Sun (Sol)',
+    name: 'Sun',
     type: 'star',
     distance: '149.6 Million km (1 AU)',
     diameter: '1,392,700 km',
@@ -233,7 +233,7 @@ export const CELESTIAL_OBJECTS: AstronomyTarget[] = [
   },
   {
     id: 'earth',
-    name: 'Earth (Terra)',
+    name: 'Earth',
     type: 'planet',
     distance: '149.6 Million km',
     diameter: '12,742 km',
@@ -258,7 +258,7 @@ export const CELESTIAL_OBJECTS: AstronomyTarget[] = [
   },
   {
     id: 'moon',
-    name: 'The Moon (Luna)',
+    name: 'Moon',
     type: 'moon',
     distance: '384,400 km from Earth',
     diameter: '3,474 km',
@@ -283,7 +283,7 @@ export const CELESTIAL_OBJECTS: AstronomyTarget[] = [
   },
   {
     id: 'mars',
-    name: 'Mars (The Red Planet)',
+    name: 'Mars',
     type: 'planet',
     distance: '227.9 Million km',
     diameter: '6,779 km',
@@ -308,7 +308,7 @@ export const CELESTIAL_OBJECTS: AstronomyTarget[] = [
   },
   {
     id: 'jupiter',
-    name: 'Jupiter (Brihaspati)',
+    name: 'Jupiter',
     type: 'planet',
     distance: '778.5 Million km',
     diameter: '139,820 km',

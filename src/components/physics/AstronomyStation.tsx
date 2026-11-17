@@ -425,7 +425,7 @@ export const AstronomyStation: React.FC<AstronomyStationProps> = ({ onBackToLab 
                   className="w-2.5 h-2.5 rounded-full border border-slate-500 shadow-sm"
                   style={{ backgroundColor: obj.color }}
                 />
-                <span>{obj.name.split(' ')[0]}</span>
+                <span>{obj.name}</span>
               </button>
             );
           })}
