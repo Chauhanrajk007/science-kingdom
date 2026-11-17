@@ -40,6 +40,11 @@ export const ChemistryLab: React.FC = () => {
   const [liquidColor, setLiquidColor] = useState<string>('rgba(224, 242, 254, 0.15)');
   const [volumeMl, setVolumeMl] = useState<number>(0);
   const [filterCategory, setFilterCategory] = useState<'all' | 'acid' | 'base' | 'salt' | 'reactive'>('all');
+  
+  // Real Pipette Dropper Animation State
+  const [isDroppingWithPipette, setIsDroppingWithPipette] = useState<boolean>(false);
+  const [droppingReagentColor, setDroppingReagentColor] = useState<string>('#38bdf8');
+  const [dropletCount, setDropletCount] = useState<number>(0);
 
   // --- TITRATION LAB STATE ---
   const [buretteVolume, setBuretteVolume] = useState<number>(50.0); // 50 mL burette
@@ -114,15 +119,34 @@ export const ChemistryLab: React.FC = () => {
     return () => clearInterval(interval);
   }, [titrationDropRate, buretteVolume]);
 
-  // Handle adding reagent to reaction simulator
+  // Handle adding reagent to reaction simulator with real Pipette Dropper animation
   const handleAddReagent = async (reagent: ChemicalReagent) => {
-    soundManager.playLiquidPour();
+    // 1. Activate Dropper Pipette above vessel
+    setIsDroppingWithPipette(true);
+    setDroppingReagentColor(reagent.color);
+    setDropletCount(1);
+    soundManager.playLiquidDrip();
+
+    // 2. Cascade droplets
+    setTimeout(() => {
+      soundManager.playLiquidDrip();
+      setDropletCount(2);
+    }, 320);
+
+    setTimeout(() => {
+      soundManager.playLiquidDrip();
+      setDropletCount(3);
+      setVolumeMl((prev) => Math.min(250, prev + 25));
+      setLiquidColor(reagent.color);
+    }, 640);
+
+    setTimeout(() => {
+      setIsDroppingWithPipette(false);
+      setDropletCount(0);
+    }, 1100);
+
     const updated = [...addedReagents, reagent];
     setAddedReagents(updated);
-    setVolumeMl((prev) => Math.min(250, prev + 25));
-
-    // Dynamic initial color blend
-    setLiquidColor(reagent.color);
 
     // Analyze reaction via AI & Chemical Knowledge Matrix
     setIsReacting(true);
@@ -131,18 +155,20 @@ export const ChemistryLab: React.FC = () => {
     setReactionResult(result);
 
     if (result.reactionOccurs) {
-      setLiquidColor(result.color);
+      setTimeout(() => {
+        setLiquidColor(result.color);
 
-      if (result.isExplosive) {
-        soundManager.playExplosion();
-        setIsExploding(true);
-        setTimeout(() => setIsExploding(false), 3000);
-      } else if (result.isPrecipitate) {
-        soundManager.playChimeSuccess();
-        confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
-      } else {
-        soundManager.playGlassClink();
-      }
+        if (result.isExplosive) {
+          soundManager.playExplosion();
+          setIsExploding(true);
+          setTimeout(() => setIsExploding(false), 3000);
+        } else if (result.isPrecipitate) {
+          soundManager.playChimeSuccess();
+          confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
+        } else {
+          soundManager.playGlassClink();
+        }
+      }, 700);
     }
   };
 
@@ -482,8 +508,39 @@ export const ChemistryLab: React.FC = () => {
                   </div>
                 ) : (
                   /* --- VIEW B: FRONT WORKBENCH SIDE VIEW --- */
-                  <div className="relative flex flex-col items-center justify-end h-64 w-48 animate-in fade-in duration-300">
+                  <div className="relative flex flex-col items-center justify-end h-72 w-56 animate-in fade-in duration-300 pt-16">
                     
+                    {/* Glass Dropper Pipette Dispensing Animation above Beaker */}
+                    <div
+                      className={`absolute top-0 z-30 transition-all duration-300 flex flex-col items-center pointer-events-none ${
+                        isDroppingWithPipette ? 'opacity-100 translate-y-2' : 'opacity-0 -translate-y-6'
+                      }`}
+                    >
+                      {/* Rubber Squeeze Bulb */}
+                      <div className={`w-7 h-9 rounded-t-full bg-rose-700 border-2 border-rose-500 shadow-xl transition-transform duration-200 ${
+                        isDroppingWithPipette ? 'scale-y-75' : 'scale-y-100'
+                      }`} />
+                      {/* Glass Pipette Barrel with Reagent Column */}
+                      <div className="w-3 h-16 border border-white/70 bg-white/20 relative rounded-b flex flex-col justify-end overflow-hidden shadow-md">
+                        <div
+                          style={{ backgroundColor: droppingReagentColor }}
+                          className="w-full h-12 opacity-95 transition-colors"
+                        />
+                      </div>
+                      {/* Tapered Jet Tip */}
+                      <div className="w-1 h-3.5 bg-white/60 rounded-b-full" />
+
+                      {/* Animated Falling Teardrop Droplets */}
+                      {dropletCount > 0 && (
+                        <div className="relative w-4 h-10 flex flex-col items-center justify-center">
+                          <div
+                            style={{ backgroundColor: droppingReagentColor }}
+                            className="w-2.5 h-3.5 rounded-full rounded-t-sm shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-bounce mt-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     {/* Borosilicate Glass Beaker / Flask Graphic */}
                     <div className="relative w-36 h-48 rounded-b-3xl border-4 border-slate-400/60 bg-white/5 backdrop-blur-sm overflow-hidden flex flex-col justify-end shadow-2xl">
                       
@@ -506,6 +563,13 @@ export const ChemistryLab: React.FC = () => {
                       >
                         {/* Meniscus Lip Line */}
                         <div className="absolute top-0 inset-x-0 h-2 bg-white/30 rounded-full blur-[0.5px]" />
+
+                        {/* Droplet Impact Splash Waves on surface */}
+                        {isDroppingWithPipette && (
+                          <div className="absolute top-0 inset-x-0 flex justify-center pointer-events-none">
+                            <span className="w-8 h-2 rounded-full border border-white animate-ping" />
+                          </div>
+                        )}
 
                         {/* Bubbling Particles */}
                         {reactionResult?.isBubbling && (
@@ -841,14 +905,30 @@ export const ChemistryLab: React.FC = () => {
                   {/* Jet Tip */}
                   <div className="w-1.5 h-4 bg-slate-300/80 rounded-b-full" />
 
-                  {/* Falling Drops Animation */}
-                  {titrationDropRate > 0 && buretteVolume > 0 && (
-                    <div className="w-1.5 h-2 rounded-full bg-cyan-300 animate-bounce mt-1 shadow-[0_0_8px_#38bdf8]" />
-                  )}
+                  {/* Falling Drops Corridor between Burette and Flask */}
+                  <div className="relative w-8 h-10 flex flex-col items-center justify-between my-0.5 overflow-hidden">
+                    {titrationDropRate === 6 && buretteVolume > 0 ? (
+                      /* Continuous Laminar Fluid Stream */
+                      <div className="w-1.5 h-full bg-cyan-300 shadow-[0_0_10px_#38bdf8] rounded-full animate-pulse" />
+                    ) : titrationDropRate > 0 && buretteVolume > 0 ? (
+                      /* Discontinuous Falling Drops */
+                      <div className="relative w-full h-full flex flex-col items-center justify-around">
+                        <div className="w-2 h-3 rounded-full rounded-t-sm bg-cyan-300 shadow-[0_0_8px_#38bdf8] animate-bounce" />
+                        <div className="w-1.5 h-2.5 rounded-full rounded-t-sm bg-cyan-400 shadow-[0_0_6px_#38bdf8] animate-pulse" />
+                      </div>
+                    ) : null}
+                  </div>
 
                   {/* Conical Flask on White Tile */}
-                  <div className="relative w-28 h-24 border-2 border-slate-400/80 bg-white/5 rounded-b-3xl rounded-t-lg overflow-hidden flex flex-col justify-end mt-4 shadow-2xl">
+                  <div className="relative w-28 h-24 border-2 border-slate-400/80 bg-white/5 rounded-b-3xl rounded-t-lg overflow-hidden flex flex-col justify-end shadow-2xl">
                     
+                    {/* Droplet Impact Ripple on Analyte Surface */}
+                    {titrationDropRate > 0 && buretteVolume > 0 && (
+                      <div className="absolute top-2 inset-x-0 flex justify-center pointer-events-none z-10">
+                        <span className="w-6 h-1.5 rounded-full border border-cyan-200 animate-ping" />
+                      </div>
+                    )}
+
                     {/* Analyte Solution with Dynamic Color Transition */}
                     <div
                       style={{

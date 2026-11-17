@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { soundManager } from '../../audio/SoundManager';
-import { Sparkles, Sun, Eye, Sliders, RotateCcw, Compass, ArrowRight, Layers } from 'lucide-react';
+import { Sparkles, Sun, Eye, Sliders, RotateCcw, Compass, ArrowRight, Layers, Flame, Zap } from 'lucide-react';
 
 export const OpticsBench: React.FC = () => {
   // Optical element selection
@@ -10,13 +10,13 @@ export const OpticsBench: React.FC = () => {
   const [objectDistance, setObjectDistance] = useState<number>(-24.0); // u (cm, negative)
   const [objectHeight, setObjectHeight] = useState<number>(6.0); // h_o (cm)
   const [focalLength, setFocalLength] = useState<number>(12.0); // f (cm)
+  const [lightMode, setLightMode] = useState<'candle' | 'laser_comb'>('candle');
   const [showRays, setShowRays] = useState<{ p: boolean; f: boolean; c: boolean }>({ p: true, f: true, c: true });
-  const [prismAngle, setPrismAngle] = useState<number>(45); // for prism dispersion
 
   // Calculate geometric optics image formation
   const calculateOptics = () => {
-    const u = objectDistance; // -24 cm
-    let f = focalLength; // +12 cm for convex lens, -12 for concave lens
+    const u = objectDistance; // negative by sign convention
+    let f = focalLength;
     let isLens = true;
 
     if (element === 'concave_lens') {
@@ -33,8 +33,8 @@ export const OpticsBench: React.FC = () => {
       isLens = false;
     }
 
-    // Lens formula: 1/f = 1/v - 1/u  => 1/v = 1/f + 1/u = (u + f)/(u*f) => v = (u * f) / (u + f)
-    // Mirror formula: 1/f = 1/v + 1/u => 1/v = 1/f - 1/u => v = (u * f) / (u - f)
+    // Lens formula: 1/f = 1/v - 1/u => v = (u * f) / (u + f)
+    // Mirror formula: 1/f = 1/v + 1/u => v = (u * f) / (u - f)
     let v = 0;
     if (isLens) {
       const denom = u + f;
@@ -62,36 +62,29 @@ export const OpticsBench: React.FC = () => {
 
   const optics = calculateOptics();
 
-  // Coordinate mapping for SVG (bench is 800px wide, center at x=400, y=200, scale = 12px/cm)
-  const scale = 11;
-  const originX = 400;
-  const originY = 190;
-
-  const objX = originX + objectDistance * scale;
-  const objTipY = originY - objectHeight * scale;
-  const fX1 = originX - Math.abs(optics.f) * scale;
-  const fX2 = originX + Math.abs(optics.f) * scale;
-  const cX1 = originX - 2 * Math.abs(optics.f) * scale;
-  const cX2 = originX + 2 * Math.abs(optics.f) * scale;
-
-  const imgX = originX + optics.v * scale;
-  const imgTipY = originY - optics.imageHeight * scale;
+  // Bench coordinate mapping: Lens is at center x = 400
+  const benchCenterX = 400;
+  const benchScale = 8; // 8 pixels per cm
+  const candleX = benchCenterX + objectDistance * benchScale;
+  const imageX = benchCenterX + optics.v * benchScale;
+  const candleH = objectHeight * benchScale;
+  const imageH = Math.min(180, Math.max(-180, optics.imageHeight * benchScale));
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0 select-none">
+    <div className="flex-1 flex flex-col gap-3 min-h-0 select-none font-mono">
       
-      {/* Top Controls Toolbar */}
-      <div className="stone-panel p-3 rounded-2xl border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+      {/* Top Controls Bar */}
+      <div className="p-3 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
         
         {/* Optical Element Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
-            Optical Element:
+          <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+            Optical Component:
           </span>
-          <div className="flex rounded-xl bg-slate-900/90 p-1 border border-slate-700 flex-wrap">
+          <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-700 flex-wrap gap-1">
             {[
-              { id: 'convex_lens', label: 'Convex Lens (Converging)' },
-              { id: 'concave_lens', label: 'Concave Lens (Diverging)' },
+              { id: 'convex_lens', label: 'Convex Lens (+f)' },
+              { id: 'concave_lens', label: 'Concave Lens (-f)' },
               { id: 'concave_mirror', label: 'Concave Mirror' },
               { id: 'convex_mirror', label: 'Convex Mirror' },
               { id: 'prism', label: 'Dispersion Prism' },
@@ -102,9 +95,9 @@ export const OpticsBench: React.FC = () => {
                   soundManager.playClick();
                   setElement(el.id as any);
                 }}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   element === el.id
-                    ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/30'
+                    ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -114,430 +107,358 @@ export const OpticsBench: React.FC = () => {
           </div>
         </div>
 
-        {/* Ray Visibility Toggles */}
-        {element !== 'prism' && (
-          <div className="flex items-center gap-1.5 text-xs font-mono">
-            <span className="text-slate-400">Rays:</span>
+        {/* Light Source Switcher: Candle vs Laser Comb */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-400">Light Source:</span>
+          <div className="flex rounded-lg bg-slate-950 border border-slate-700 p-0.5 text-xs">
             <button
-              onClick={() => setShowRays({ ...showRays, p: !showRays.p })}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                showRays.p ? 'bg-emerald-950 border-emerald-500 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-500'
+              onClick={() => setLightMode('candle')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-all ${
+                lightMode === 'candle'
+                  ? 'bg-amber-500 text-slate-950 font-black'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              Principal
+              <Flame className="w-3.5 h-3.5" /> Candle Flame
             </button>
             <button
-              onClick={() => setShowRays({ ...showRays, f: !showRays.f })}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                showRays.f ? 'bg-amber-950 border-amber-500 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-500'
+              onClick={() => setLightMode('laser_comb')}
+              className={`px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-all ${
+                lightMode === 'laser_comb'
+                  ? 'bg-cyan-500 text-slate-950 font-black'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              Focal
-            </button>
-            <button
-              onClick={() => setShowRays({ ...showRays, c: !showRays.c })}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                showRays.c ? 'bg-cyan-950 border-cyan-500 text-cyan-300' : 'bg-slate-900 border-slate-700 text-slate-500'
-              }`}
-            >
-              Central
+              <Zap className="w-3.5 h-3.5" /> 5-Beam Laser Comb
             </button>
           </div>
-        )}
+        </div>
 
       </div>
 
-      {/* Main Optical Bench Display + Parameter Adjusters */}
+      {/* Main Bench Visual Viewport + Controls Grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
         
-        {/* Left Column (8 cols): Optical Bench SVG Ray Diagram */}
+        {/* Left Column (8 cols): Precision Ray Optics Bench SVG Canvas */}
         <div className="lg:col-span-8 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden">
           
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 flex-wrap gap-2 text-xs">
             <div className="flex items-center gap-2">
               <Sun className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">
-                Precision Geometric Ray Tracing Bench
+              <span className="font-bold text-slate-200 uppercase tracking-wider">
+                Precision Optical Rail Bench & Ray Tracer
               </span>
             </div>
-            <div className="flex items-center gap-3 text-xs font-mono">
-              <span className="text-slate-400">Object u: <strong className="text-cyan-400">{objectDistance} cm</strong></span>
-              <span className="text-slate-400">Focal f: <strong className="text-amber-400">{focalLength} cm</strong></span>
-              <span className="text-slate-400">Image v: <strong className="text-emerald-400">{optics.v.toFixed(1)} cm</strong></span>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400">Object Distance (u): <strong className="text-amber-400">{objectDistance} cm</strong></span>
+              <span className="text-slate-400">Image Distance (v): <strong className="text-emerald-400">{optics.v.toFixed(1)} cm</strong></span>
+              <span className="text-slate-400">Magnification (m): <strong className="text-purple-400">{optics.magnification.toFixed(2)}×</strong></span>
             </div>
           </div>
 
-          {/* Graphical Optical Stage */}
-          <div className="relative flex-1 rounded-xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-slate-800/80 overflow-hidden flex items-center justify-center min-h-[300px]">
-            
+          {/* SVG Optical Rail Bench */}
+          <div className="relative flex-1 rounded-xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-slate-800/80 overflow-hidden flex items-center justify-center min-h-[320px]">
             <svg viewBox="0 0 800 360" className="w-full h-full">
               <defs>
-                <filter id="flameGlow">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
+                <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(56, 189, 248, 0.4)" />
+                  <stop offset="50%" stopColor="rgba(255, 255, 255, 0.7)" />
+                  <stop offset="100%" stopColor="rgba(56, 189, 248, 0.4)" />
+                </linearGradient>
               </defs>
 
-              {/* --- OPTICAL AXIS (HORIZONTAL RAIL) --- */}
-              <line x1="30" y1={originY} x2="770" y2={originY} stroke="#64748b" strokeWidth="2" strokeDasharray="6 4" opacity="0.6" />
-
-              {/* Millimeter Ticks along Optical Rail */}
-              {[-30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30].map((cm) => {
-                const tickX = originX + cm * scale;
+              {/* Optical Rail Track at bottom */}
+              <rect x="50" y="280" width="700" height="18" fill="#1e293b" stroke="#475569" strokeWidth="2" rx="3" />
+              
+              {/* Rail Distance Markers */}
+              {[-30, -20, -10, 0, 10, 20, 30].map((cm) => {
+                const rx = benchCenterX + cm * benchScale;
                 return (
                   <g key={cm}>
-                    <line x1={tickX} y1={originY - 4} x2={tickX} y2={originY + 4} stroke="#475569" strokeWidth="1" />
-                    <text x={tickX} y={originY + 16} fill="#64748b" fontSize="8" fontFamily="monospace" textAnchor="middle">
-                      {cm}
+                    <line x1={rx} y1="280" x2={rx} y2="292" stroke="#94a3b8" strokeWidth="1.5" />
+                    <text x={rx} y="306" fill="#64748b" fontSize="9" textAnchor="middle">
+                      {cm}cm
                     </text>
                   </g>
                 );
               })}
 
-              {/* Cardinal Focus Points F and 2F Markers */}
+              {/* Principal Optical Axis */}
+              <line x1="50" y1="180" x2="750" y2="180" stroke="#475569" strokeWidth="1.5" strokeDasharray="4 4" />
+
+              {/* Focal Points Markers (F1, 2F1, F2, 2F2) */}
               {element !== 'prism' && (
                 <g>
                   {/* Left Focus F1 and 2F1 */}
-                  <circle cx={fX1} cy={originY} r="3.5" fill="#f59e0b" />
-                  <text x={fX1} y={originY - 8} fill="#f59e0b" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
-                    F₁
-                  </text>
-                  <circle cx={cX1} cy={originY} r="3.5" fill="#f59e0b" opacity="0.6" />
-                  <text x={cX1} y={originY - 8} fill="#f59e0b" fontSize="9" fontFamily="monospace" textAnchor="middle" opacity="0.7">
-                    2F₁
-                  </text>
+                  <circle cx={benchCenterX - focalLength * benchScale} cy="180" r="4" fill="#38bdf8" />
+                  <text x={benchCenterX - focalLength * benchScale} y="196" fill="#38bdf8" fontSize="10" textAnchor="middle" fontWeight="bold">F₁</text>
+                  <circle cx={benchCenterX - 2 * focalLength * benchScale} cy="180" r="4" fill="#64748b" />
+                  <text x={benchCenterX - 2 * focalLength * benchScale} y="196" fill="#94a3b8" fontSize="9" textAnchor="middle">2F₁</text>
 
                   {/* Right Focus F2 and 2F2 */}
-                  <circle cx={fX2} cy={originY} r="3.5" fill="#f59e0b" />
-                  <text x={fX2} y={originY - 8} fill="#f59e0b" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
-                    F₂
-                  </text>
-                  <circle cx={cX2} cy={originY} r="3.5" fill="#f59e0b" opacity="0.6" />
-                  <text x={cX2} y={originY - 8} fill="#f59e0b" fontSize="9" fontFamily="monospace" textAnchor="middle" opacity="0.7">
-                    2F₂
-                  </text>
+                  <circle cx={benchCenterX + focalLength * benchScale} cy="180" r="4" fill="#38bdf8" />
+                  <text x={benchCenterX + focalLength * benchScale} y="196" fill="#38bdf8" fontSize="10" textAnchor="middle" fontWeight="bold">F₂</text>
+                  <circle cx={benchCenterX + 2 * focalLength * benchScale} cy="180" r="4" fill="#64748b" />
+                  <text x={benchCenterX + 2 * focalLength * benchScale} y="196" fill="#94a3b8" fontSize="9" textAnchor="middle">2F₂</text>
                 </g>
               )}
 
-              {/* --- OPTICAL ELEMENT AT CENTER (x = originX) --- */}
-              {element === 'convex_lens' && (
+              {/* --- PRISM DISPERSION MODE --- */}
+              {element === 'prism' ? (
                 <g>
-                  {/* Biconvex Lens Glass */}
-                  <path
-                    d={`M ${originX},${originY - 100} Q ${originX + 22},${originY} ${originX},${originY + 100} Q ${originX - 22},${originY} ${originX},${originY - 100}`}
-                    fill="#38bdf8"
-                    fillOpacity="0.25"
-                    stroke="#0ea5e9"
-                    strokeWidth="2.5"
-                  />
-                  <line x1={originX} y1={originY - 110} x2={originX} y2={originY + 110} stroke="#38bdf8" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-                  <text x={originX} y={originY - 116} fill="#38bdf8" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-                    Convex Lens
-                  </text>
-                </g>
-              )}
-
-              {element === 'concave_lens' && (
-                <g>
-                  {/* Biconcave Lens Glass */}
-                  <path
-                    d={`M ${originX - 14},${originY - 100} L ${originX + 14},${originY - 100} Q ${originX + 3},${originY} ${originX + 14},${originY + 100} L ${originX - 14},${originY + 100} Q ${originX - 3},${originY} ${originX - 14},${originY - 100}`}
-                    fill="#38bdf8"
-                    fillOpacity="0.25"
-                    stroke="#0ea5e9"
-                    strokeWidth="2.5"
-                  />
-                  <text x={originX} y={originY - 116} fill="#38bdf8" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-                    Concave Lens
-                  </text>
-                </g>
-              )}
-
-              {element === 'concave_mirror' && (
-                <g>
-                  {/* Curved Concave Mirror Arc */}
-                  <path
-                    d={`M ${originX + 15},${originY - 100} Q ${originX - 15},${originY} ${originX + 15},${originY + 100}`}
-                    fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth="4"
-                  />
-                  <text x={originX} y={originY - 116} fill="#cbd5e1" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-                    Concave Mirror
-                  </text>
-                </g>
-              )}
-
-              {element === 'convex_mirror' && (
-                <g>
-                  {/* Curved Convex Mirror Arc */}
-                  <path
-                    d={`M ${originX - 15},${originY - 100} Q ${originX + 15},${originY} ${originX - 15},${originY + 100}`}
-                    fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth="4"
-                  />
-                  <text x={originX} y={originY - 116} fill="#cbd5e1" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-                    Convex Mirror
-                  </text>
-                </g>
-              )}
-
-              {element === 'prism' && (
-                <g>
-                  {/* Equilateral Quartz Prism */}
-                  <polygon
-                    points={`${originX},${originY - 90} ${originX - 70},${originY + 60} ${originX + 70},${originY + 60}`}
-                    fill="#38bdf8"
-                    fillOpacity="0.2"
-                    stroke="#0ea5e9"
-                    strokeWidth="3"
-                  />
-                  {/* Incident White Ray */}
-                  <line x1={originX - 220} y1={originY + 10} x2={originX - 35} y2={originY - 15} stroke="#ffffff" strokeWidth="3" />
-                  
-                  {/* Dispersed Rainbow Spectrum Emerging */}
+                  {/* Glass Prism Triangle */}
+                  <polygon points="400,100 340,260 460,260" fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
+                  {/* Incident White Beam */}
+                  <line x1="100" y1="210" x2="360" y2="180" stroke="#ffffff" strokeWidth="4" />
+                  {/* Rainbow Refracted Beams */}
                   {[
-                    { color: '#ef4444', dev: 8 },
-                    { color: '#f97316', dev: 14 },
-                    { color: '#eab308', dev: 20 },
-                    { color: '#22c55e', dev: 26 },
-                    { color: '#06b6d4', dev: 32 },
-                    { color: '#3b82f6', dev: 38 },
-                    { color: '#a855f7', dev: 44 },
-                  ].map((band, idx) => (
-                    <line
-                      key={idx}
-                      x1={originX + 35}
-                      y1={originY - 15}
-                      x2={originX + 240}
-                      y2={originY + band.dev}
-                      stroke={band.color}
-                      strokeWidth="2.5"
-                      opacity="0.9"
-                    />
+                    { col: '#ef4444', dev: 20 },
+                    { col: '#f97316', dev: 23 },
+                    { col: '#eab308', dev: 26 },
+                    { col: '#22c55e', dev: 29 },
+                    { col: '#06b6d4', dev: 33 },
+                    { col: '#a855f7', dev: 37 },
+                  ].map((rb, idx) => (
+                    <line key={idx} x1="430" y1={175 + idx * 2} x2="720" y2={120 + rb.dev * 3} stroke={rb.col} strokeWidth="2.5" opacity="0.9" />
                   ))}
-                  <text x={originX + 250} y={originY + 28} fill="#ffffff" fontSize="11" fontFamily="monospace" fontWeight="bold">
-                    Rainbow Spectrum (Cauchy Dispersion)
-                  </text>
+                  <text x="730" y="140" fill="#a855f7" fontSize="10" fontWeight="bold">Violet (Max Dev)</text>
+                  <text x="730" y="240" fill="#ef4444" fontSize="10" fontWeight="bold">Red (Min Dev)</text>
                 </g>
-              )}
-
-              {/* --- OBJECT CANDLE (LEFT SIDE) --- */}
-              {element !== 'prism' && (
+              ) : (
+                /* --- LENS / MIRROR MODE --- */
                 <g>
-                  {/* Candle Body */}
-                  <rect
-                    x={objX - 6}
-                    y={originY - objectHeight * scale}
-                    width="12"
-                    height={objectHeight * scale}
-                    fill="#fef08a"
-                    stroke="#ca8a04"
-                    strokeWidth="1.5"
-                    rx="2"
-                  />
-                  {/* Candle Wick */}
-                  <line x1={objX} y1={originY - objectHeight * scale} x2={objX} y2={originY - objectHeight * scale - 5} stroke="#451a03" strokeWidth="2" />
-                  {/* Glowing Flame Tip */}
-                  <ellipse
-                    cx={objX}
-                    cy={objTipY - 8}
-                    rx="5"
-                    ry="9"
-                    fill="#f59e0b"
-                    filter="url(#flameGlow)"
-                  />
-                  <ellipse cx={objX} cy={objTipY - 7} rx="2.5" ry="5" fill="#fef08a" />
-                  <text x={objX} y={originY + 28} fill="#fef08a" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-                    Object (Candle)
-                  </text>
-                </g>
-              )}
+                  {/* Optical Element at Center (x = 400) */}
+                  {element.includes('convex') ? (
+                    // Convex element shape
+                    <ellipse cx={benchCenterX} cy="180" rx="14" ry="90" fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
+                  ) : (
+                    // Concave element shape
+                    <path d={`M ${benchCenterX - 8} 90 Q ${benchCenterX + 4} 180 ${benchCenterX - 8} 270 L ${benchCenterX + 8} 270 Q ${benchCenterX - 4} 180 ${benchCenterX + 8} 90 Z`} fill="url(#lensGrad)" stroke="#38bdf8" strokeWidth="2.5" />
+                  )}
 
-              {/* --- RAY TRACING LINES --- */}
-              {element !== 'prism' && (
-                <g>
-                  {/* Ray 1: Principal Ray (Green) - Parallel to axis then through Focus */}
-                  {showRays.p && (
-                    <g>
-                      <line x1={objX} y1={objTipY} x2={originX} y2={objTipY} stroke="#22c55e" strokeWidth="2" opacity="0.9" />
-                      {optics.isLens ? (
-                        <line x1={originX} y1={objTipY} x2={imgX > originX ? imgX + 80 : 780} y2={imgTipY + (optics.imageHeight > 0 ? 40 : -40)} stroke="#22c55e" strokeWidth="2" opacity="0.9" />
-                      ) : (
-                        <line x1={originX} y1={objTipY} x2={imgX} y2={imgTipY} stroke="#22c55e" strokeWidth="2" opacity="0.9" />
+                  {/* ELEMENT MOUNT ON RAIL */}
+                  <rect x={benchCenterX - 10} y="270" width="20" height="14" fill="#334155" stroke="#94a3b8" />
+
+                  {/* 1. CANDLE OBJECT on Left */}
+                  <g>
+                    {/* Candle Stand on rail */}
+                    <rect x={candleX - 12} y="270" width="24" height="12" fill="#d97706" />
+                    {/* Candle Body */}
+                    <rect x={candleX - 6} y={180 - candleH} width="12" height={candleH} fill="#fef08a" stroke="#d97706" strokeWidth="1.5" rx="2" />
+                    {/* Wick & Animated Flame */}
+                    <line x1={candleX} y1={180 - candleH} x2={candleX} y2={180 - candleH - 6} stroke="#000" strokeWidth="2" />
+                    <ellipse cx={candleX} cy={180 - candleH - 12} rx="5" ry="9" fill="#f59e0b" className="animate-pulse" />
+                    <ellipse cx={candleX} cy={180 - candleH - 10} rx="2.5" ry="5" fill="#fef08a" />
+                    <text x={candleX} y="260" fill="#f59e0b" fontSize="10" fontWeight="bold" textAnchor="middle">Object</text>
+                  </g>
+
+                  {/* 2. LIGHT RAYS TRACING */}
+                  {lightMode === 'candle' ? (
+                    <g opacity="0.85">
+                      {/* Ray 1: Parallel to Principal Axis -> Passes through F2 */}
+                      {showRays.p && (
+                        <g>
+                          <line x1={candleX} y1={180 - candleH} x2={benchCenterX} y2={180 - candleH} stroke="#06b6d4" strokeWidth="2" />
+                          <line x1={benchCenterX} y1={180 - candleH} x2={imageX} y2={180 + imageH} stroke="#06b6d4" strokeWidth="2" />
+                        </g>
+                      )}
+
+                      {/* Ray 2: Passing through Optical Center without deviation */}
+                      {showRays.c && (
+                        <line x1={candleX} y1={180 - candleH} x2={imageX} y2={180 + imageH} stroke="#a855f7" strokeWidth="2" />
+                      )}
+
+                      {/* Ray 3: Through Focus F1 -> Emerges Parallel */}
+                      {showRays.f && (
+                        <g>
+                          <line x1={candleX} y1={180 - candleH} x2={benchCenterX} y2={180 + imageH} stroke="#f59e0b" strokeWidth="2" />
+                          <line x1={benchCenterX} y1={180 + imageH} x2={imageX} y2={180 + imageH} stroke="#f59e0b" strokeWidth="2" />
+                        </g>
                       )}
                     </g>
-                  )}
-
-                  {/* Ray 2: Focal Ray (Amber) - Through Focus then Parallel */}
-                  {showRays.f && (
-                    <g>
-                      <line x1={objX} y1={objTipY} x2={originX} y2={imgTipY} stroke="#f59e0b" strokeWidth="1.8" opacity="0.8" />
-                      <line x1={originX} y1={imgTipY} x2={780} y2={imgTipY} stroke="#f59e0b" strokeWidth="1.8" opacity="0.8" />
+                  ) : (
+                    /* 5-BEAM LASER COMB */
+                    <g opacity="0.9">
+                      {[-40, -20, 0, 20, 40].map((offset, li) => (
+                        <g key={li}>
+                          <line x1="80" y1={180 + offset} x2={benchCenterX} y2={180 + offset} stroke="#38bdf8" strokeWidth="2" />
+                          <line x1={benchCenterX} y1={180 + offset} x2={benchCenterX + focalLength * benchScale} y2="180" stroke="#38bdf8" strokeWidth="2" />
+                          <line x1={benchCenterX + focalLength * benchScale} y1="180" x2="720" y2={180 - offset * 1.5} stroke="#38bdf8" strokeWidth="2" strokeDasharray="2 2" />
+                        </g>
+                      ))}
                     </g>
                   )}
 
-                  {/* Ray 3: Central Ray (Cyan) - Straight through Optical Center */}
-                  {showRays.c && (
-                    <line x1={objX} y1={objTipY} x2={imgX + 40} y2={imgTipY + (optics.imageHeight > 0 ? 20 : -20)} stroke="#06b6d4" strokeWidth="1.8" opacity="0.8" />
+                  {/* 3. FORMED IMAGE (Real / Virtual) */}
+                  {imageX > 50 && imageX < 750 && Math.abs(imageH) > 2 && (
+                    <g>
+                      {/* Image Stand */}
+                      <rect x={imageX - 10} y="270" width="20" height="12" fill="#475569" />
+                      
+                      {/* Inverted / Upright Image Candle */}
+                      <rect
+                        x={imageX - 5}
+                        y={optics.isUpright ? 180 - Math.abs(imageH) : 180}
+                        width="10"
+                        height={Math.abs(imageH)}
+                        fill={optics.isReal ? '#38bdf8' : 'rgba(56, 189, 248, 0.4)'}
+                        stroke="#0284c7"
+                        strokeWidth="1.5"
+                        strokeDasharray={optics.isReal ? 'none' : '3 3'}
+                        rx="2"
+                      />
+                      {/* Inverted Flame */}
+                      <ellipse
+                        cx={imageX}
+                        cy={optics.isUpright ? 180 - Math.abs(imageH) - 8 : 180 + Math.abs(imageH) + 8}
+                        rx="4"
+                        ry="7"
+                        fill="#f59e0b"
+                        opacity={optics.isReal ? 1 : 0.5}
+                      />
+                      <text x={imageX} y="260" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">
+                        {optics.isReal ? 'Real Image' : 'Virtual Image'}
+                      </text>
+                    </g>
                   )}
-                </g>
-              )}
-
-              {/* --- IMAGE CANDLE (FORMED) --- */}
-              {element !== 'prism' && Math.abs(optics.v) < 40 && (
-                <g>
-                  {/* Image Candle Body (Dashed if virtual, solid if real) */}
-                  <rect
-                    x={imgX - 5}
-                    y={optics.imageHeight > 0 ? originY : originY - Math.abs(optics.imageHeight * scale)}
-                    width="10"
-                    height={Math.abs(optics.imageHeight * scale)}
-                    fill={optics.isReal ? '#f43f5e' : '#a855f7'}
-                    fillOpacity="0.7"
-                    stroke="#ffffff"
-                    strokeWidth="1.5"
-                    strokeDasharray={optics.isReal ? 'none' : '4 3'}
-                    rx="2"
-                  />
-                  {/* Image Flame Tip */}
-                  <ellipse
-                    cx={imgX}
-                    cy={imgTipY + (optics.imageHeight > 0 ? 8 : -8)}
-                    rx="4"
-                    ry="7"
-                    fill={optics.isReal ? '#fb7185' : '#c084fc'}
-                  />
-                  <text
-                    x={imgX}
-                    y={originY + (optics.imageHeight > 0 ? -12 : 28)}
-                    fill={optics.isReal ? '#f43f5e' : '#c084fc'}
-                    fontSize="10"
-                    fontFamily="monospace"
-                    textAnchor="middle"
-                    fontWeight="bold"
-                  >
-                    {optics.isReal ? 'Real Image' : 'Virtual Image'}
-                  </text>
                 </g>
               )}
             </svg>
-
           </div>
 
-          {/* Real-Time Optical Status Footer */}
-          <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-800 text-xs font-mono text-slate-300">
-            <span>Nature: <strong className={optics.isReal ? 'text-emerald-400' : 'text-purple-400'}>
-              {element === 'prism' ? 'Polychromatic Dispersion' : `${optics.isReal ? 'Real Inverted' : 'Virtual Upright'} (${Math.abs(optics.magnification) > 1 ? 'Magnified' : 'Diminished'})`}
-            </strong></span>
-            <span>Magnification: <strong className="text-cyan-400">{Math.abs(optics.magnification).toFixed(2)}×</strong></span>
+          {/* Bottom Telemetry */}
+          <div className="grid grid-cols-4 gap-2 pt-3 border-t border-slate-800 text-center text-xs">
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-slate-500 block text-[10px]">Image Nature</span>
+              <strong className={optics.isReal ? 'text-emerald-400' : 'text-purple-400'}>
+                {optics.isReal ? 'Real & Inverted' : 'Virtual & Erect'}
+              </strong>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-slate-500 block text-[10px]">Magnification (m)</span>
+              <strong className="text-cyan-400">{optics.magnification.toFixed(2)}×</strong>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-slate-500 block text-[10px]">Image Position (v)</span>
+              <strong className="text-amber-400">{optics.v.toFixed(1)} cm</strong>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-slate-500 block text-[10px]">Focal Power (P)</span>
+              <strong className="text-blue-400">{(100 / optics.f).toFixed(2)} D</strong>
+            </div>
           </div>
-
         </div>
 
-        {/* Right Column (4 cols): Curvature & Distance Sliders + Lens Formula */}
-        <div className="lg:col-span-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md p-4 flex flex-col justify-between shadow-2xl">
-          <div>
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
-                Geometric Optics Controls
-              </span>
-              <Sliders className="w-4 h-4 text-cyan-400" />
+        {/* Right Column (4 cols): Optical Parameter Sliders */}
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
+          
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider block">
+              Bench Positioning:
+            </span>
+
+            {/* Object Distance Slider */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">Object Position (u):</span>
+                <span className="font-bold text-amber-300">{objectDistance} cm</span>
+              </div>
+              <input
+                type="range"
+                min="-35"
+                max="-5"
+                step="0.5"
+                value={objectDistance}
+                onChange={(e) => setObjectDistance(parseFloat(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
+              <div className="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                <span>-35cm (Beyond 2F)</span>
+                <span className="text-amber-400 font-bold">-24cm (At 2F)</span>
+                <span>-5cm (Between F & O)</span>
+              </div>
             </div>
 
-            {/* Sliders Box */}
-            <div className="space-y-3.5 mb-4 text-xs font-mono">
-              
-              {/* 1. Object Distance u */}
-              {element !== 'prism' && (
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-300">Object Distance (u):</span>
-                    <strong className="text-cyan-400 font-bold">{objectDistance} cm</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="-35"
-                    max="-8"
-                    step="1"
-                    value={objectDistance}
-                    onChange={(e) => setObjectDistance(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                  />
-                </div>
-              )}
-
-              {/* 2. Focal Length f / Curvature */}
-              {element !== 'prism' && (
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-300">Focal Length (f):</span>
-                    <strong className="text-amber-400 font-bold">{focalLength} cm</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="6"
-                    max="22"
-                    step="1"
-                    value={focalLength}
-                    onChange={(e) => setFocalLength(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
-                  />
-                  <span className="text-[9px] text-slate-500 font-mono block mt-0.5">
-                    Radius of Curvature R = 2f = {focalLength * 2} cm
-                  </span>
-                </div>
-              )}
-
-              {/* 3. Object Height h_o */}
-              {element !== 'prism' && (
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-300">Object Height (h):</span>
-                    <strong className="text-emerald-400 font-bold">{objectHeight} cm</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="2"
-                    max="10"
-                    step="0.5"
-                    value={objectHeight}
-                    onChange={(e) => setObjectHeight(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-              )}
-
+            {/* Focal Length Slider */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">Focal Length (f):</span>
+                <span className="font-bold text-cyan-300">{focalLength} cm</span>
+              </div>
+              <input
+                type="range"
+                min="6"
+                max="20"
+                step="0.5"
+                value={focalLength}
+                onChange={(e) => setFocalLength(parseFloat(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
             </div>
 
-            {/* Gaussian Lens / Mirror Formula Box */}
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs font-mono">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                Gaussian Optical Equation:
-              </span>
-              <div className="text-center py-1.5 bg-slate-900 rounded border border-slate-800 font-bold text-amber-300 text-sm">
-                1/f = 1/v - 1/u ⟹ v = (u · f) / (u + f)
+            {/* Object Height Slider */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">Candle Height (h_o):</span>
+                <span className="font-bold text-purple-300">{objectHeight} cm</span>
               </div>
-              <div className="text-[11px] text-slate-300 leading-relaxed pt-1">
-                1/v = 1/{focalLength} - 1/({objectDistance})
-                <br />
-                Calculated v = <strong className="text-emerald-400 font-bold">{optics.v.toFixed(1)} cm</strong>
-                <br />
-                Magnification M = v/u = <strong className="text-cyan-400 font-bold">{optics.magnification.toFixed(2)}</strong>
-              </div>
+              <input
+                type="range"
+                min="2"
+                max="12"
+                step="0.5"
+                value={objectHeight}
+                onChange={(e) => setObjectHeight(parseFloat(e.target.value))}
+                className="w-full accent-purple-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
             </div>
           </div>
 
-          {/* Senku's Optics Insight */}
-          <div className="p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-600/40 text-[11px] font-serif text-cyan-200 mt-3">
-            <strong className="font-mono text-cyan-300 block text-[10px] uppercase">
-              Senku's Ray Law:
-            </strong>
-            "Light rays do not guess! Light follows the path of stationary action (Fermat's Principle). Place an object at 2F, and the inverted image appears at exactly 2F with 1.00x magnification!"
+          {/* Ray Visibility Toggles */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-2 text-xs">
+            <span className="font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+              Geometric Ray Filters:
+            </span>
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+              <span className="text-cyan-300 font-bold">Parallel Ray (passes via Focus)</span>
+              <input
+                type="checkbox"
+                checked={showRays.p}
+                onChange={(e) => setShowRays({ ...showRays, p: e.target.checked })}
+                className="w-4 h-4 accent-cyan-400 rounded cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+              <span className="text-purple-300 font-bold">Central Ray (undeviated)</span>
+              <input
+                type="checkbox"
+                checked={showRays.c}
+                onChange={(e) => setShowRays({ ...showRays, c: e.target.checked })}
+                className="w-4 h-4 accent-purple-400 rounded cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+              <span className="text-amber-300 font-bold">Focal Ray (emerges parallel)</span>
+              <input
+                type="checkbox"
+                checked={showRays.f}
+                onChange={(e) => setShowRays({ ...showRays, f: e.target.checked })}
+                className="w-4 h-4 accent-amber-400 rounded cursor-pointer"
+              />
+            </label>
+          </div>
+
+          {/* Thin Lens Equation Card */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-cyan-950/60 to-slate-900 border border-cyan-500/30 text-xs shadow-xl">
+            <span className="font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+              Gaussian Thin Lens Equation:
+            </span>
+            <div className="p-2 rounded bg-slate-950 border border-cyan-500/30 text-center font-bold text-cyan-300 mb-1.5">
+              1 / f = 1 / v - 1 / u
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+              Sign Convention: Incident light travels left-to-right. Real images form on opposite side (v &gt; 0). Virtual images form on same side (v &lt; 0).
+            </p>
           </div>
 
         </div>
